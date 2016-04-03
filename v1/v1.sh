@@ -7,7 +7,9 @@ function create_initramfs {
     cd bin
     cp "$1" busybox
     chmod +x busybox
-    ln -s busybox sh
+    for bin in mount echo ls cat ps dmesg sysctl sh; do
+        ln -s busybox $bin
+    done
     cd ..
     
     if [ -z "$2" ]; then
