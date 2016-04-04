@@ -56,7 +56,7 @@ if [ ! -d "linux-$VERSION" ]; then
     #   rm -rf "linux-$VERSION.tar" && \
     #   exit 1
     test -d "linux-$VERSION" && rm -rf "linux-$VERSION"
-    xz -cd "linux-$VERSION.tar.xz" | tar xvf "linux-$VERSION.tar" -
+    xz -cd "linux-$VERSION.tar.xz" | tar xvf -
     #rm "linux-$VERSION.tar"
 fi
 cp "$KERNEL_CONFIG" "linux-$VERSION"/.config
