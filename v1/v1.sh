@@ -6,12 +6,12 @@ function create_initramfs {
     mkdir -p dev sbin bin usr/bin etc var tmp
     cd bin
     cp "$1" busybox
-    chmod +x busybox
-    for bin in mount echo ls cat ps dmesg sysctl sh; do
+    chmod 755 busybox
+    for bin in mount echo ls cat ps dmesg sysctl sh sleep; do
         ln -s busybox $bin
     done
     cd ..
-    
+
     if [ -z "$2" ]; then
         # Simple init file to launch busybox
         echo "* No init file provided. Configuring initramfs to launch Busybox shell."
@@ -21,7 +21,7 @@ function create_initramfs {
         echo "* Using provided init file '$2'"
         cp "$2" init
     fi
-    chmod +x init
+    chmod 755 init
 
     find . | cpio -H newc -o > ../initramfs.cpio
     cd ..
