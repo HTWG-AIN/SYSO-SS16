@@ -79,7 +79,7 @@ function download_busybox {
     echo "download busybox"
     cd $TARGET
     if [ ! -e "busybox" ]; then
-        git archive --remote=git@burns.in.htwg-konstanz.de:labworks-SYSO_SS16/syso_ss16_skeleton.git HEAD V1/busybox > busybox
+        git archive --remote=git@burns.in.htwg-konstanz.de:labworks-SYSO_SS16/syso_ss16_skeleton.git HEAD:V1 busybox | tar -x
     fi
 }
 
@@ -148,5 +148,3 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
-
-
