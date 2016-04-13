@@ -1,1 +1,3 @@
 target/
+*/stdout_*.log
+*/stderr_*.log

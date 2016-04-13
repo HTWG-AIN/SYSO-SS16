@@ -1,16 +1,6 @@
 #!/bin/bash
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-cd $DIR/..
-echo "$PWD"
-if [ ! -d "target" ]; then
-    echo "create target folder"
-    mkdir target
-fi
-cd target
-TARGET=$(pwd)
-echo "target: $TARGET"
+# Constants
 OUTPUT="stdout_1.log"
 OUTPUT_ERR="errorout_1.log"
 VERSION="4.2.3"
@@ -18,75 +8,27 @@ CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 export ARCH="x86"
 export CC="ccache gcc"
 
-
-function clean {
-    echo "clean"
-    cd $TARGET/..
-    rm -r target/
-    mkdir target
-}
-
 function copy_files {
-    echo "copy files"
-    cd $TARGET
+    echo "* Copying files..."
+    cd "$TARGET"
     if [ -e "files" ]; then
-        echo "deleting files"
+        echo "* Deleting files..."
         rm -r files
     fi
-    cp -r $DIR/files ./files
+    cp -r "$DIR/files" ./files
 }
-
-function create_initramfs {
-    echo "create initramfs"
-    cd $TARGET
-    mkdir initramfs
-    cd initramfs
-    mkdir -p dev sbin bin usr/bin etc var tmp
-    cd bin
-    #currently in target/initramfs/bin
-    gcc --static -m32 ../../files/systeminfo.c -o systeminfo
-    cp $TARGET/busybox busybox
-    chmod 755 busybox
-    for bin in mount echo ls cat ps dmesg sysctl sh sleep; do
-        ln -s busybox $bin
-    done
-    cd ..
-
-    echo "* Using provided init file"
-    cp $TARGET/files/init.sh init
-
-    chmod 755 init
-
-    find . | cpio -H newc -o > ../initramfs.cpio
-    cd ..
-    rm -rf initramfs
-}
-
-function usage {
-    echo "Usage: $0 TODO"
-    exit 0
-}
-
-function start_qemu {
-    echo "start qemu"
-    cd $TARGET
-    ARCH="i386"
-    qemu-system-$ARCH -kernel "linux-$VERSION/arch/x86/boot/bzImage" -initrd "initramfs.cpio" -curses
-}
-
 
 function download_busybox {
-    echo "download busybox"
-    cd $TARGET
+    echo "* Downloading Busybox..."
+    cd "$TARGET"
     if [ ! -e "busybox" ]; then
         git archive --remote=git@burns.in.htwg-konstanz.de:labworks-SYSO_SS16/syso_ss16_skeleton.git HEAD:V1 busybox | tar -x
     fi
 }
 
-
 function download_kernel {
-    echo "download kernel"
-    cd $TARGET
+    echo "* Downloading kernel version $VERSION..."
+    cd "$TARGET"
     if [ ! -d "linux-$VERSION" ]; then
         # Download the kernel if necessary
         test -f "linux-$VERSION.tar.xz" || wget "https://kernel.org/pub/linux/kernel/v4.x/linux-$VERSION.tar.xz"
@@ -103,8 +45,8 @@ function download_kernel {
 }
 
 function compile_kernel {
-    echo "compile kernel"
-    cd $TARGET
+    echo "* Compiling kernel..."
+    cd "$TARGET"
     cp files/kernel_config "linux-$VERSION"/.config
     cd "linux-$VERSION"
 
@@ -112,10 +54,51 @@ function compile_kernel {
     make -j $CORES
 }
 
+function create_initramfs {
+    echo "* Creating initramfs..."
+    cd "$TARGET"
+    mkdir initramfs
+    cd initramfs
+    mkdir -p dev sbin bin usr/bin etc var tmp
+    cd bin
+    #currently in target/initramfs/bin
+    gcc --static -m32 ../../files/systeminfo.c -o systeminfo
+    cp "$TARGET/busybox" busybox
+    chmod 755 busybox
+    for bin in mount echo ls cat ps dmesg sysctl sh sleep; do
+        ln -s busybox $bin
+    done
+    cd ..
 
+    echo "* Using provided init file..."
+    cp "$TARGET/files/init.sh" init
 
-# Redirect stdout and stderr
-#exec > $OUTPUT 2> $OUTPUT_ERR
+    chmod 755 init
+
+    find . | cpio -H newc -o > ../initramfs.cpio
+    cd ..
+    rm -rf initramfs
+}
+
+function start_qemu {
+    # TODO: replace curses with serial tty: http://nairobi-embedded.org/qemu_serial_terminal_redirection.html
+    echo "* Starting qemu..."
+    cd "$TARGET"
+    ARCH="i386"
+    qemu-system-$ARCH -kernel "linux-$VERSION/arch/x86/boot/bzImage" -initrd "initramfs.cpio" -curses
+}
+
+function clean {
+    echo "* Cleaning up..."
+    cd "$TARGET/.."
+    rm -r target/
+    mkdir target
+}
+
+function usage {
+    echo "Usage: $0 TODO"
+    exit 0
+}
 
 function do_all {
     copy_files
@@ -127,12 +110,29 @@ function do_all {
     start_qemu
 }
 
+# Redirect stdout and stderr
+# TODO: qemu curses interface doesn't work when output redirected
+exec > $OUTPUT 2> $OUTPUT_ERR
+
 if [ $# -lt 1 ]; then
     usage
 fi
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR/.."
+echo "$PWD"
+if [ ! -d "target" ]; then
+    echo "create target folder"
+    mkdir target
+fi
+cd target
+TARGET=$(pwd)
+echo "* Target output directory: $TARGET"
+
 while [ "$1" != "" ]; do
     case $1 in
+        --clean )               clean
+                                ;;
         -c | --copy )           copy_files
                                 ;;
         -a | --all )            do_all
