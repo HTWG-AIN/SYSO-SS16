@@ -96,7 +96,18 @@ function clean {
 }
 
 function usage {
-    echo "Usage: $0 TODO"
+    echo "Usage: $0 [OPTION]... 
+ 
+  -a, --all             do all without cleaning.
+  -q, --qemu            start qemu.
+  -h, --help            show this help page, then exit.
+  --clean               clean up the target directory.
+  --copy_files          copy resource files.
+  --initramfs           create the initramfs using the resources.
+  --download_busybox    downloads the busybox from the skeleton git repository.
+  --compile_kernel      compiles the kernel.
+    "
+    
     exit 0
 }
 
@@ -112,7 +123,7 @@ function do_all {
 
 # Redirect stdout and stderr
 # TODO: qemu curses interface doesn't work when output redirected
-exec > $OUTPUT 2> $OUTPUT_ERR
+#exec > $OUTPUT 2> $OUTPUT_ERR
 
 if [ $# -lt 1 ]; then
     usage
@@ -120,7 +131,7 @@ fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/.."
-echo "$PWD"
+# echo "$PWD"
 if [ ! -d "target" ]; then
     echo "create target folder"
     mkdir target
@@ -131,18 +142,22 @@ echo "* Target output directory: $TARGET"
 
 while [ "$1" != "" ]; do
     case $1 in
-        --clean )               clean
-                                ;;
-        -c | --copy )           copy_files
-                                ;;
         -a | --all )            do_all
-                                ;;
-        --initramfs )           create_initramfs
                                 ;;
         -q | --qemu )           start_qemu
                                 ;;
         -h | --help )           usage
                                 ;;
+        --clean )               clean
+                                ;;
+        --copy_files )          copy_files
+                                ;;
+        --initramfs )           create_initramfs
+                                ;;
+        --download_busybox )    download_busybox
+                                ;;
+        --compile_kernel )      compile_kernel
+                                ;;        
         * )                     usage
                                 exit 1
     esac
