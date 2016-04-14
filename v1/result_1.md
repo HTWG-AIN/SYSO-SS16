@@ -1,7 +1,7 @@
 # Systemsoftware SS16 exercise v1
-### Size of the generated kernel
+## Size of the generated kernel
 The size of the generated kernel file is **1043824 bytes** (**1020 KB**).
-### Minimum amount of RAM required to run the kernel in QEMU
+## Minimum amount of RAM required to run the kernel in QEMU
 According to *The Linux Documentation Project*, it's possible to run Linux in systems with at least **4 MB** of memory (http://www.tldp.org/FAQ/Linux-FAQ/linux-distributions.html#how-much-memory-does-linux-need).
 
 However, tests with the QEMU emulator with our configuration were only able to run correctly the Busybox shell with at least **21 MB** of memory.
@@ -9,7 +9,7 @@ However, tests with the QEMU emulator with our configuration were only able to r
 Once booted, the system reports only **4012 KB** of used memory.
 
 The size of the kernel can be reduced using several techniques, some of them covered in this guide: http://elinux.org/Kernel_Size_Tuning_Guide.
-### Kernel configuration parameters
+## Kernel configuration parameters
 The enabled paramters used for the kernel configuration are the following:
 * X86_32
 * X86
