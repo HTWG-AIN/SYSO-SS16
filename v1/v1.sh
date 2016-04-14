@@ -99,6 +99,7 @@ function usage {
     echo "Usage: $0 [OPTION]... 
  
   -a, --all             do all without cleaning.
+  -b, --batch           run all the tasks uninteractively (stdout and stderr teed to files and QEMU won't be executed).
   -q, --qemu            start qemu.
   -h, --help            show this help page, then exit.
   --clean               clean up the target directory.
@@ -121,9 +122,16 @@ function do_all {
     start_qemu
 }
 
-# Redirect stdout and stderr
-# TODO: qemu curses interface doesn't work when output redirected
-#exec > $OUTPUT 2> $OUTPUT_ERR
+function do_all_batch {
+    # Redirect stdout and stderr
+    exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
+    copy_files
+    download_kernel
+    download_busybox
+    compile_kernel
+    # Create initramfs file
+    create_initramfs
+}
 
 if [ $# -lt 1 ]; then
     usage
@@ -133,7 +141,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/.."
 # echo "$PWD"
 if [ ! -d "target" ]; then
-    echo "create target folder"
+    echo "* Creating target folder"
     mkdir target
 fi
 cd target
@@ -143,6 +151,8 @@ echo "* Target output directory: $TARGET"
 while [ "$1" != "" ]; do
     case $1 in
         -a | --all )            do_all
+                                ;;
+        -b | --batch )          do_all_batch
                                 ;;
         -q | --qemu )           start_qemu
                                 ;;
