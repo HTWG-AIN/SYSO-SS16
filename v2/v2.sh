@@ -7,12 +7,27 @@ KERNEL_VERSION="4.2.3"
 BUSYBOX_VERSION="1.24.2"
 CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/bin/"
+MACADDRESS=$(calc_mac_address)
 
 # Environment variables
 export PATH="$TOOLCHAIN_PATH:$PATH"
 export ARCH="arm"
 export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
+
+function calc_mac_address {
+    case $USER in
+        niwehrle)
+                    echo 00:00:00:00:02:01
+                    ;;
+        da431lop)
+                    echo 00:00:00:00:02:02
+                    ;;
+        *)
+                    echo 00:00:00:00:02:03
+                    ;;
+    esac    
+}
 
 function clean {
     echo -n "* Cleaning up... "
@@ -137,6 +152,7 @@ function start_qemu {
     MACHINE="versatilepb"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
+        -net nic,macaddr="$MACADDRESS"
         -kernel "linux-$VERSION/arch/$ARCH/boot/zImage" \
         -initrd "initramfs.cpio" \
         -append "console=ttyS0" \
