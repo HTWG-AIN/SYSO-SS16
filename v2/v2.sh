@@ -84,11 +84,11 @@ function create_initramfs {
     cp -rp "$TARGET/busybox-$BUSYBOX_VERSION/_install"/* .
     echo "done"
 
-    echo "-> Compiling systeminfo..."
+    echo -n "-> Compiling systeminfo... "
     cd bin
-    #currently in target/initramfs/bin
     ${CROSS_COMPILE}gcc --static ../../files/systeminfo.c -o systeminfo
     cd ..
+    echo "done"
 
     echo -n "-> Using provided init file... "
     cp "$TARGET/files/init.sh" init
@@ -96,7 +96,7 @@ function create_initramfs {
     echo "done"
 
     echo -n "-> Packaging initramfs files into initramfs.cpio... "
-    find . | cpio -H newc -o > ../initramfs.cpio
+    find . | cpio --quiet -H newc -o > ../initramfs.cpio
     echo "done"
 
     echo -n "-> Cleaning up... "
