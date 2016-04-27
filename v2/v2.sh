@@ -152,7 +152,7 @@ function start_qemu {
     MACHINE="versatilepb"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
-        -net nic,macaddr="$MACADDRESS"
+        -net nic,macaddr="$MACADDRESS" \
         -kernel "linux-$VERSION/arch/$ARCH/boot/zImage" \
         -initrd "initramfs.cpio" \
         -append "console=ttyS0" \
