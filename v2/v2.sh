@@ -14,6 +14,14 @@ export ARCH="arm"
 export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
 
+function clean {
+    echo "* Cleaning up..."
+    cd "$TARGET/.."
+    rm -r target/
+    mkdir target
+}
+
+
 function download_kernel {
     echo "-> Downloading kernel version $VERSION..."
     cd "$TARGET"
@@ -136,6 +144,7 @@ function start_qemu {
 function usage {
     echo "Usage: $0 [--dn ][--pa ][--cp ][--co ][--qe]
  
+  --clean               clean up the target directory.
   --dn                  download sources
   --pa                  patch sources
   --cp                  copy GitLab sources
@@ -164,6 +173,8 @@ echo "* Target output directory: $TARGET"
 
 while [ "$1" != "" ]; do
     case $1 in
+        --clean )               clean
+                                ;;
         --dn )                  download_sources
                                 ;;
         --pa )                  patch_sources
