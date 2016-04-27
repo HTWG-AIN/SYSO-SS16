@@ -80,22 +80,14 @@ function create_initramfs {
     mkdir initramfs
     cd initramfs
 
-    echo -n "-> Creating directory tree... "
-    mkdir -p dev sbin bin usr/bin etc var tmp
+    echo -n "-> Copying and linking busybox... "
+    cp -rp "$TARGET/busybox-$BUSYBOX_VERSION/_install"/* .
     echo "done"
 
     echo "-> Compiling systeminfo..."
     cd bin
     #currently in target/initramfs/bin
     ${CROSS_COMPILE}gcc --static ../../files/systeminfo.c -o systeminfo
-
-    echo -n "-> Copying and linking busybox... "
-    cp "$TARGET/busybox" busybox
-    chmod 755 busybox
-    for bin in mount echo ls cat ps dmesg sysctl sh sleep; do
-        ln -s busybox $bin
-    done
-    echo "done"
     cd ..
 
     echo -n "-> Using provided init file... "
@@ -127,12 +119,14 @@ function compile_busybox {
     cp files/busybox_config "busybox-$BUSYBOX_VERSION"/.config
     cd "busybox-$BUSYBOX_VERSION"
     make -j $CORES
+    make -j $CORES install
 }
 
 function compile_sources {
     echo "* Compiling sources..."
     compile_kernel
     compile_busybox
+    create_initramfs
 }
 
 function start_qemu {
@@ -141,11 +135,8 @@ function start_qemu {
     QEMU_ARCH="arm"
     # TODO: versatileab?
     MACHINE="versatilepb"
-    # TODO: which cpu?
-    CPU="??"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
-        -cpu "$CPU" \
         -kernel "linux-$VERSION/arch/$ARCH/boot/zImage" \
         -initrd "initramfs.cpio" \
         -append "console=ttyS0" \
