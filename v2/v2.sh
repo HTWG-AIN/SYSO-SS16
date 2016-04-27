@@ -7,7 +7,6 @@ KERNEL_VERSION="4.2.3"
 BUSYBOX_VERSION="1.24.2"
 CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/bin/"
-MACADDRESS=$(calc_mac_address)
 
 # Environment variables
 export PATH="$TOOLCHAIN_PATH:$PATH"
@@ -149,11 +148,11 @@ function start_qemu {
     cd "$TARGET"
     QEMU_ARCH="arm"
     # TODO: versatileab?
-    MACHINE="versatilepb"
+    MACHINE="vexpress-a9"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
-        -net nic,macaddr="$MACADDRESS" \
-        -kernel "linux-$VERSION/arch/$ARCH/boot/zImage" \
+        -net nic,vlan=0,macaddr=$(calc_mac_address) \
+        -kernel "linux-$KERNEL_VERSION/arch/$ARCH/boot/zImage" \
         -initrd "initramfs.cpio" \
         -append "console=ttyS0" \
         -nographic
