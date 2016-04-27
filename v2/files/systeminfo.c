@@ -20,9 +20,9 @@ int main (int argc, char *argv[]) {
 
     printf("\nHello users world");
     printf("\n");
-    pritnf("\nKernel: %s %s %s", kernel_info.sysname, kernel_info.release, kernel_info.version);
-    printf("\nHostname %s", uname.nodename);
-    printf("\nMachine: %s", uname.machine);
+    printf("\nKernel: %s %s %s", kernel_info.sysname, kernel_info.release, kernel_info.version);
+    printf("\nHostname %s", kernel_info.nodename);
+    printf("\nMachine: %s", kernel_info.machine);
     printf("\n");
     printf("\nUptime: %ld:%ld:%ld", sys_info.uptime/3600, sys_info.uptime%3600/60, sys_info.uptime%60);
     printf("\nTotal RAM: %ldMB", (sys_info.totalram / 1024) / 1024 );
