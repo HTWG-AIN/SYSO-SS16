@@ -15,42 +15,48 @@ export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
 
 function clean {
-    echo "* Cleaning up..."
-    cd "$TARGET/.."
-    rm -r target/
-    mkdir target
+    echo -n "* Cleaning up... "
+    rm -rf "$TARGET"
+    echo "done"
 }
 
-
 function download_kernel {
-    echo "-> Downloading kernel version $VERSION..."
+    echo -n "-> Downloading kernel version $KERNEL_VERSION... "
     cd "$TARGET"
-    if [ ! -d "linux-$VERSION" ]; then
+    if [ ! -d "linux-$KERNEL_VERSION" ]; then
         # Download the kernel if necessary
-        test -f "linux-$VERSION.tar.xz" || wget "https://kernel.org/pub/linux/kernel/v4.x/linux-$VERSION.tar.xz"
-        #test -f "linux-$VERSION.tar.sign" || wget "https://kernel.org/pub/linux/kernel/v4.x/linux-$VERSION.tar.sign"
-        #unxz "linux-$VERSION.tar.xz"
-        #gpg --verify "linux-$VERSION.tar.sign" || \
+        test -f "linux-$KERNEL_VERSION.tar.xz" || wget --quiet "https://kernel.org/pub/linux/kernel/v4.x/linux-$KERNEL_VERSION.tar.xz"
+        #test -f "linux-$KERNEL_VERSION.tar.sign" || wget "https://kernel.org/pub/linux/kernel/v4.x/linux-$KERNEL_VERSION.tar.sign"
+        #unxz "linux-$KERNEL_VERSION.tar.xz"
+        #gpg --verify "linux-$KERNEL_VERSION.tar.sign" || \
         #   echo "Bad signature. Aborting." && \
-        #   rm -rf "linux-$VERSION.tar" && \
+        #   rm -rf "linux-$KERNEL_VERSION.tar" && \
         #   exit 1
-        test -d "linux-$VERSION" && rm -rf "linux-$VERSION"
+        test -d "linux-$KERNEL_VERSION" && rm -rf "linux-$KERNEL_VERSION"
+        echo "done"
 
-        echo "-> Unpacking kernel..."
-        xz -cd "linux-$VERSION.tar.xz" | tar xvf -
-        #rm "linux-$VERSION.tar"
+        echo -n "-> Unpacking kernel... "
+        xz -cd "linux-$KERNEL_VERSION.tar.xz" | tar xf -
+        #rm "linux-$KERNEL_VERSION.tar"
+        echo "done"
+    else
+        echo "already downloaded"
     fi
 }
 
 function download_busybox {
-    echo "-> Downloading busybox version $BUSYBOX_VERSION..."
+    echo -n "-> Downloading busybox version $BUSYBOX_VERSION... "
     cd "$TARGET"
     if [ ! -d "busybox-$BUSYBOX_VERSION" ]; then
-        test -f "busybox-$BUSYBOX_VERSION.tar.bz2" || wget "http://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2"
+        test -f "busybox-$BUSYBOX_VERSION.tar.bz2" || wget --quiet "http://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2"
         test -d "busybox-$BUSYBOX_VERSION" && rm -rf "busybox-$BUSYBOX_VERSION"
+        echo "done"
 
-        echo "-> Unpacking busybox..."
-        tar xjvf "busybox-$BUSYBOX_VERSION.tar.bz2"
+        echo -n "-> Unpacking busybox... "
+        tar xjf "busybox-$BUSYBOX_VERSION.tar.bz2"
+        echo "done"
+    else
+        echo "already downloaded"
     fi
 }
 
@@ -74,39 +80,44 @@ function create_initramfs {
     mkdir initramfs
     cd initramfs
 
-    echo "-> Creating directory tree..."
+    echo -n "-> Creating directory tree... "
     mkdir -p dev sbin bin usr/bin etc var tmp
-    cd bin
-    #currently in target/initramfs/bin
+    echo "done"
 
     echo "-> Compiling systeminfo..."
+    cd bin
+    #currently in target/initramfs/bin
     ${CROSS_COMPILE}gcc --static ../../files/systeminfo.c -o systeminfo
 
-    echo "-> Copying and linking busybox..."
+    echo -n "-> Copying and linking busybox... "
     cp "$TARGET/busybox" busybox
     chmod 755 busybox
     for bin in mount echo ls cat ps dmesg sysctl sh sleep; do
         ln -s busybox $bin
     done
+    echo "done"
     cd ..
 
-    echo "-> Using provided init file..."
+    echo -n "-> Using provided init file... "
     cp "$TARGET/files/init.sh" init
     chmod 755 init
+    echo "done"
 
-    echo "-> Packaging initramfs files into initramfs.cpio..."
+    echo -n "-> Packaging initramfs files into initramfs.cpio... "
     find . | cpio -H newc -o > ../initramfs.cpio
+    echo "done"
 
-    echo "-> Cleaning up"
+    echo -n "-> Cleaning up... "
     cd ..
     rm -rf initramfs
+    echo "done"
 }
 
 function compile_kernel {
     echo "-> Compiling kernel..."
     cd "$TARGET"
-    cp files/kernel_config "linux-$VERSION"/.config
-    cd "linux-$VERSION"
+    cp files/kernel_config "linux-$KERNEL_VERSION"/.config
+    cd "linux-$KERNEL_VERSION"
     make -j $CORES
 }
 
@@ -144,7 +155,7 @@ function start_qemu {
 function usage {
     echo "Usage: $0 [--dn ][--pa ][--cp ][--co ][--qe]
  
-  --clean               clean up the target directory.
+  --clean               delete the target directory
   --dn                  download sources
   --pa                  patch sources
   --cp                  copy GitLab sources
@@ -164,8 +175,9 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/.."
 # echo "$PWD"
 if [ ! -d "target" ]; then
-    echo "* Creating target folder"
+    echo -n "* Creating target folder... "
     mkdir target
+    echo "done"
 fi
 cd target
 TARGET=$(pwd)
