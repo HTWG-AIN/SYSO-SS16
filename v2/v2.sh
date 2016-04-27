@@ -178,6 +178,14 @@ if [ ! -d "target" ]; then
     echo -n "* Creating target folder... "
     mkdir target
     echo "done"
+    echo -n "* Copying files... "
+    cp -r "$DIR/files" target/
+    echo "done"
+else
+    echo -n "* Copying files... "
+    rm -rf target/files
+    cp -r "$DIR/files" target/
+    echo "done"
 fi
 cd target
 TARGET=$(pwd)
