@@ -1,6 +1,8 @@
 #!/bin/sh
 
 echo "Making directories"
+chown -R root:root /
+
 mkdir -p /proc
 mkdir -p /sys
 mkdir -p /etc

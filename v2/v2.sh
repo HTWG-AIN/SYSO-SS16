@@ -11,7 +11,7 @@ TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/b
 # Environment variables
 export PATH="$TOOLCHAIN_PATH:$PATH"
 export ARCH="arm"
-export CROSS_COMPILE=$TOOLCHAIN_PATH"armv6j-rpi-linux-gnueabihf-"
+export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
 
 function calc_usr_postfix {
@@ -124,7 +124,7 @@ function create_initramfs {
     echo "root::0:0:root:/root:/bin/sh" > etc/passwd && chmod 655 etc/passwd
     echo "root:x:0:" > etc/group && chmod 655 etc/group
     # Password: toor
-    echo 'root:$1$syso$vKkRaah7wCeFd89rR/Sc30:::::::' > etc/shadow && chmod 600 etc/shadow
+    #echo 'root:$1$syso$vKkRaah7wCeFd89rR/Sc30:::::::' > etc/shadow && chmod 600 etc/shadow
     echo "done"
     
     # TODO: necessary?
