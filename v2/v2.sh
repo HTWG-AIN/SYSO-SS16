@@ -161,7 +161,7 @@ function start_qemu {
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
         -kernel "linux-$KERNEL_VERSION/arch/$ARCH/boot/zImage" \
-        -dts "linux-$KERNEL_VERSION/arch/arm/boot/dts/vexpress-v2p-ca9.dtb" \
+        -dtb "linux-$KERNEL_VERSION/arch/arm/boot/dts/vexpress-v2p-ca9.dtb" \
         -initrd "initramfs.cpio" \
         -net nic,macaddr=$(calc_mac_address) \
         -net vde,sock=/tmp/vde2-tap0.ctl \
