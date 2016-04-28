@@ -122,6 +122,19 @@ function create_initramfs {
     cd ..
     echo "done"
 
+    echo -n "-> Adding root user..."
+    echo "root::0:0:root:/root:/bin/sh" > etc/passwd && chmod 655 etc/passwd
+    echo "root:x:0:" > etc/group && chmod 655 etc/group
+    # Password: toor
+    echo 'root:$1$syso$vKkRaah7wCeFd89rR/Sc30:::::::' > etc/shadow && chmod 600 etc/shadow
+    echo "done"
+    
+    # TODO: necessary?
+    #echo 'pts/0' > etc/securetty
+    #echo 'pts/1' > etc/securetty
+    #echo 'pts/2' > etc/securetty
+    #echo 'pts/3' > etc/securetty
+
     echo -n "-> Using provided init file... "
     cp "$TARGET/files/init.sh" init
     chmod 755 init
