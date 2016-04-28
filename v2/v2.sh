@@ -151,9 +151,10 @@ function start_qemu {
     MACHINE="vexpress-a9"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
-        -net nic,vlan=0,macaddr=$(calc_mac_address) \
         -kernel "linux-$KERNEL_VERSION/arch/$ARCH/boot/zImage" \
         -initrd "initramfs.cpio" \
+        -net nic,macaddr=$(calc_mac_address) \
+        -net vde,sock=/tmp/vde2-tap0.ctl \
         -append "console=ttyS0" \
         -nographic
 }
