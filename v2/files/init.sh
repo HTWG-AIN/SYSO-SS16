@@ -25,6 +25,7 @@ echo "Starting udhcpc"
 udhcpc
 
 echo "Starting telnetd"
+# TODO: if telnetd executes /bin/login, some programs (such as ls) won't send their stdout
 telnetd -l /bin/sh
 
 /bin/systeminfo
