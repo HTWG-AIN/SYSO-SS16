@@ -165,6 +165,7 @@ function start_qemu {
         -initrd "initramfs.cpio" \
         -net nic,macaddr=$(calc_mac_address) \
         -net vde,sock=/tmp/vde2-tap0.ctl \
+        -monitor telnet:127.0.0.1:50201,server,nowait \
         -append "console=ttyAMA0" \
         -nographic
 }
