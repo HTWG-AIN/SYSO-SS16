@@ -193,7 +193,7 @@ function usage {
 }
 
 function telnet {
-   exec telnet 127.0.0.1 "$TELNETPORT"
+    exec telnet 127.0.0.1 "$TELNETPORT"
 }
 
 if [ $# -lt 1 ]; then
