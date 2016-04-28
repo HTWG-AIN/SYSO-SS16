@@ -157,15 +157,15 @@ function start_qemu {
     echo "* Starting QEMU..."
     cd "$TARGET"
     QEMU_ARCH="arm"
-    # TODO: versatileab?
     MACHINE="vexpress-a9"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
         -kernel "linux-$KERNEL_VERSION/arch/$ARCH/boot/zImage" \
+        -dts "linux-$KERNEL_VERSION/arch/arm/boot/dts/vexpress-v2p-ca9.dtb" \
         -initrd "initramfs.cpio" \
         -net nic,macaddr=$(calc_mac_address) \
         -net vde,sock=/tmp/vde2-tap0.ctl \
-        -append "console=ttyS0" \
+        -append "console=ttyAMA0" \
         -nographic
 }
 
