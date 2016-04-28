@@ -82,10 +82,12 @@ function download_sources {
 
 function patch_sources {
     echo "* Patching sources..."
+    echo "* unused"
 }
 
 function copy_sources {
     echo "* Copying GitLab sources..."
+    echo "* unused"
 }
 
 function create_initramfs {
@@ -93,7 +95,14 @@ function create_initramfs {
     cd "$TARGET"
     mkdir initramfs
     cd initramfs
-
+    
+    echo -n "-> Copying udhcpc-script... "
+    cd etc
+    cp "$TARGET/files/simple.script" simple.script
+    chmod 755 simple.script
+    cd ..
+    echo "done"
+    
     echo -n "-> Copying and linking busybox... "
     cp -rp "$TARGET/busybox-$BUSYBOX_VERSION/_install"/* .
     echo "done"
@@ -164,8 +173,8 @@ function usage {
  
   --clean               delete the target directory
   --dn                  download sources
-  --pa                  patch sources
-  --cp                  copy GitLab sources
+  --pa                  patch sources       -> TODO
+  --cp                  copy GitLab sources -> TODO
   --co                  compile sources
   --qe                  start qemu and a windows terminal to the serial port
   -h, --help            show this help page, then exit
