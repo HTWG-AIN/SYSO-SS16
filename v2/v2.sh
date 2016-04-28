@@ -14,19 +14,27 @@ export ARCH="arm"
 export CROSS_COMPILE=$TOOLCHAIN_PATH"armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
 
-function calc_mac_address {
+function calc_usr_postfix {
     case $USER in
         niwehrle)
-                    echo 00:00:00:00:02:01
+                    echo 01
                     ;;
         da431lop)
-                    echo 00:00:00:00:02:02
+                    echo 02
                     ;;
         *)
-                    echo 00:00:00:00:02:03
+                    echo 03
                     ;;
     esac    
 }
+
+USR_POSTFIX=$(calc_usr_postfix)
+MACADDR="00:00:00:00:02:$USR_POSTFIX"
+TELNETPORT="502$USR_POSTFIX"
+TELNETADDR="127.0.0.1:$TELNETPORT"
+
+echo "$MACADDR"
+echo "$TELNETADDR"
 
 function clean {
     echo -n "* Cleaning up... "
@@ -163,9 +171,9 @@ function start_qemu {
         -kernel "linux-$KERNEL_VERSION/arch/$ARCH/boot/zImage" \
         -dtb "linux-$KERNEL_VERSION/arch/arm/boot/dts/vexpress-v2p-ca9.dtb" \
         -initrd "initramfs.cpio" \
-        -net nic,macaddr=$(calc_mac_address) \
+        -net nic,macaddr="$MACADDR" \
         -net vde,sock=/tmp/vde2-tap0.ctl \
-        -monitor telnet:127.0.0.1:50201,server,nowait \
+        -monitor telnet:"$TELNETADDR",server,nowait \
         -append "console=ttyAMA0" \
         -nographic
 }
@@ -179,8 +187,13 @@ function usage {
   --cp                  copy GitLab sources -> TODO
   --co                  compile sources
   --qe                  start qemu and a windows terminal to the serial port
+  --tn                  connect to qemu via telnet
   -h, --help            show this help page, then exit
     "
+}
+
+function telnet {
+   exec telnet 127.0.0.1 "$TELNETPORT"
 }
 
 if [ $# -lt 1 ]; then
@@ -230,6 +243,8 @@ while [ "$1" != "" ]; do
         --ck )                  compile_kernel
                                 ;;
         --cb )                  compile_busybox
+                                ;;
+        --tn )                  telnet
                                 ;;
         * )                     usage
                                 exit 1
