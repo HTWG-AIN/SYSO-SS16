@@ -33,8 +33,6 @@ MACADDR="00:00:00:00:02:$USR_POSTFIX"
 TELNETPORT="502$USR_POSTFIX"
 TELNETADDR="127.0.0.1:$TELNETPORT"
 
-echo "$MACADDR"
-echo "$TELNETADDR"
 
 function clean {
     echo -n "* Cleaning up... "
@@ -173,7 +171,6 @@ function start_qemu {
         -initrd "initramfs.cpio" \
         -net nic,macaddr="$MACADDR" \
         -net vde,sock=/tmp/vde2-tap0.ctl \
-        -monitor telnet:"$TELNETADDR",server,nowait \
         -append "console=ttyAMA0" \
         -nographic
 }
@@ -192,9 +189,6 @@ function usage {
     "
 }
 
-function telnet {
-    exec telnet 127.0.0.1 "$TELNETPORT"
-}
 
 if [ $# -lt 1 ]; then
     usage
@@ -243,8 +237,6 @@ while [ "$1" != "" ]; do
         --ck )                  compile_kernel
                                 ;;
         --cb )                  compile_busybox
-                                ;;
-        --tn )                  telnet
                                 ;;
         * )                     usage
                                 exit 1
