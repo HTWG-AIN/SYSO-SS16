@@ -97,6 +97,7 @@ function create_initramfs {
     cd initramfs
     
     echo -n "-> Copying udhcpc-script... "
+    mkdir etc
     cd etc
     cp "$TARGET/files/simple.script" simple.script
     chmod 755 simple.script
@@ -222,6 +223,8 @@ while [ "$1" != "" ]; do
         --qe )                  start_qemu
                                 ;;
         -h | --help )           usage
+                                ;;
+        -i )                    create_initramfs
                                 ;;
         * )                     usage
                                 exit 1
