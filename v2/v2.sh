@@ -11,7 +11,7 @@ TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/b
 # Environment variables
 export PATH="$TOOLCHAIN_PATH:$PATH"
 export ARCH="arm"
-export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
+export CROSS_COMPILE=$TOOLCHAIN_PATH"armv6j-rpi-linux-gnueabihf-"
 export CC="ccache gcc"
 
 function calc_mac_address {
@@ -180,12 +180,11 @@ function usage {
   --qe                  start qemu and a windows terminal to the serial port
   -h, --help            show this help page, then exit
     "
-    
-    exit 0
 }
 
 if [ $# -lt 1 ]; then
     usage
+    exit 1
 fi
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -223,8 +222,13 @@ while [ "$1" != "" ]; do
         --qe )                  start_qemu
                                 ;;
         -h | --help )           usage
+                                exit 0
                                 ;;
         -i )                    create_initramfs
+                                ;;
+        --ck )                  compile_kernel
+                                ;;
+        --cb )                  compile_busybox
                                 ;;
         * )                     usage
                                 exit 1
