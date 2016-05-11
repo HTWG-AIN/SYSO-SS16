@@ -84,10 +84,23 @@ function download_busybox {
     fi
 }
 
+function download_buildroot {
+    echo -n "-> Downloading buildroot... "
+    cd "$TARGET"
+    if [ ! -d "buildroot" ]; then
+        git clone git://git.buildroot.net/buildroot
+        git checkout 1daa4c95a4bb93621292dd5c9d24285fcddb4026
+        rm -rf .git*
+        echo "done"
+    else
+        echo "already downloaded"
+    fi  
+}
 function download_sources {
     echo "* Downloading sources..."
     download_kernel
     download_busybox
+    download_buildroot
 }
 
 function patch_sources {
@@ -194,7 +207,7 @@ function usage {
  
   --clean               delete the target directory
   --dn                  download sources
-  --pa                  patch sources       -> TODO
+  --pa                  patch sources
   --cp                  copy GitLab sources -> TODO
   --co                  compile sources
   --qe                  start qemu and a windows terminal to the serial port
