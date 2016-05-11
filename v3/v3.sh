@@ -3,17 +3,19 @@
 # Constants
 OUTPUT="stdout_1.log"
 OUTPUT_ERR="errorout_1.log"
-KERNEL_VERSION="4.2.3"
-BUSYBOX_VERSION="1.24.2"
-CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
-#new /group/SYSO_WS1516/armv6j-rpi-linux-gnueabihf/bin/
-TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/bin/"
-PATCH="linux-smsc95xx_allow_mac_setting.patch"
+export KERNEL_VERSION="4.2.3"
+export BUSYBOX_VERSION="1.24.2"
+export BUILDROOT_COMMIT="1daa4c95a4bb93621292dd5c9d24285fcddb4026"
+export CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
+export PATCH="linux-smsc95xx_allow_mac_setting.patch"
+# TODO: right board name?? (vexpress_ca15_tc2 / vexpress_ca5x2 / vexpress_ca9x4)
+export BOARD_NAME="vexpress_ca5x2"
 
 # Environment variables
 export PATH="$TOOLCHAIN_PATH:$PATH"
 export ARCH="arm"
-export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
+export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf"
 export CC="ccache gcc"
 
 # arch needs to be set before accesing it
@@ -45,53 +47,14 @@ function clean {
     echo "done"
 }
 
-function download_kernel {
-    echo -n "-> Downloading kernel version $KERNEL_VERSION... "
-    cd "$TARGET"
-    if [ ! -d "linux-$KERNEL_VERSION" ]; then
-        # Download the kernel if necessary
-        test -f "linux-$KERNEL_VERSION.tar.xz" || wget --quiet "https://kernel.org/pub/linux/kernel/v4.x/linux-$KERNEL_VERSION.tar.xz"
-        #test -f "linux-$KERNEL_VERSION.tar.sign" || wget "https://kernel.org/pub/linux/kernel/v4.x/linux-$KERNEL_VERSION.tar.sign"
-        #unxz "linux-$KERNEL_VERSION.tar.xz"
-        #gpg --verify "linux-$KERNEL_VERSION.tar.sign" || \
-        #   echo "Bad signature. Aborting." && \
-        #   rm -rf "linux-$KERNEL_VERSION.tar" && \
-        #   exit 1
-        test -d "linux-$KERNEL_VERSION" && rm -rf "linux-$KERNEL_VERSION"
-        echo "done"
-
-        echo -n "-> Unpacking kernel... "
-        xz -cd "linux-$KERNEL_VERSION.tar.xz" | tar xf -
-        #rm "linux-$KERNEL_VERSION.tar"
-        echo "done"
-    else
-        echo "already downloaded"
-    fi
-}
-
-function download_busybox {
-    echo -n "-> Downloading busybox version $BUSYBOX_VERSION... "
-    cd "$TARGET"
-    if [ ! -d "busybox-$BUSYBOX_VERSION" ]; then
-        test -f "busybox-$BUSYBOX_VERSION.tar.bz2" || wget --quiet "http://busybox.net/downloads/busybox-$BUSYBOX_VERSION.tar.bz2"
-        test -d "busybox-$BUSYBOX_VERSION" && rm -rf "busybox-$BUSYBOX_VERSION"
-        echo "done"
-
-        echo -n "-> Unpacking busybox... "
-        tar xjf "busybox-$BUSYBOX_VERSION.tar.bz2"
-        echo "done"
-    else
-        echo "already downloaded"
-    fi
-}
-
 function download_buildroot {
     echo -n "-> Downloading buildroot... "
     cd "$TARGET"
     if [ ! -d "buildroot" ]; then
-        git clone git://git.buildroot.net/buildroot
-        git checkout 1daa4c95a4bb93621292dd5c9d24285fcddb4026
-        rm -rf .git*
+        git clone git://git.buildroot.net/buildroot > /dev/null 2>&1
+        cd buildroot
+        git checkout "$BUILDROOT_COMMIT" > /dev/null 2>&1
+        rm -rf .git
         echo "done"
     else
         echo "already downloaded"
@@ -99,8 +62,7 @@ function download_buildroot {
 }
 function download_sources {
     echo "* Downloading sources..."
-    download_kernel
-    download_busybox
+    # Buildroot takes care of downloading and compiling the kernel, BusyBox and U-Boot
     download_buildroot
 }
 
@@ -161,30 +123,10 @@ function create_initramfs {
     echo "done"
 }
 
-function compile_kernel {
-    echo "-> Compiling kernel..."
-    cd "$TARGET"
-    cp files/kernel_config "linux-$KERNEL_VERSION"/.config
-    cd "linux-$KERNEL_VERSION"
-    make -j $CORES
-    echo "done"
-}
-
-function compile_busybox {
-    echo "-> Compiling busybox..."
-    cd "$TARGET"
-    cp files/busybox_config "busybox-$BUSYBOX_VERSION"/.config
-    cd "busybox-$BUSYBOX_VERSION"
-    make -j $CORES
-    make -j $CORES install
-    echo "done"
-}
-
 function compile_buildroot {
     echo "-> Compiling buildroot..."
-    cd "$TARGET"
-    cp files/buildroot_config buildroot/.config
-    cd buildroot
+    cd "$TARGET/buildroot"
+    cp "$TARGET/files/buildroot_config" .config
     make -j $CORES source
     make -j $CORES
     echo "done"
@@ -194,8 +136,7 @@ function compile_sources {
     # Redirect stdout and stderr
     exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
     echo "* Compiling sources..."
-    #compile_kernel
-    #compile_busybox
+    compile_buildroot
     create_initramfs
 }
 
