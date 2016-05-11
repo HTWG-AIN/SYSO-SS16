@@ -97,7 +97,7 @@ function create_initramfs {
 
     echo -n "-> Compiling systeminfo... "
     cd bin
-    ${CROSS_COMPILE}gcc --static ../../files/systeminfo.c -o systeminfo
+    ${CROSS_COMPILE}-gcc --static ../../files/systeminfo.c -o systeminfo
     cd ..
     echo "done"
 
@@ -137,7 +137,8 @@ function compile_sources {
     exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
     echo "* Compiling sources..."
     compile_buildroot
-    create_initramfs
+    echo "* Using buildroot's initramfs"
+    #create_initramfs
 }
 
 function start_qemu {
