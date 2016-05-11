@@ -6,6 +6,7 @@ OUTPUT_ERR="errorout_1.log"
 KERNEL_VERSION="4.2.3"
 BUSYBOX_VERSION="1.24.2"
 CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
+#new /group/SYSO_WS1516/armv6j-rpi-linux-gnueabihf/bin/
 TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf/bin/"
 PATCH="linux-smsc95xx_allow_mac_setting.patch"
 
@@ -105,8 +106,8 @@ function download_sources {
 
 function patch_sources {
     echo "* Patching sources..."
-    cd "$TARGET/$KERNEL_PATH"
-    patch -f -p1 < "$Target/files/$PATCH"
+    cd "$TARGET/linux-$KERNEL_VERSION"
+    patch -f -p1 < "$TARGET/files/$PATCH"
 }
 
 function copy_sources {
