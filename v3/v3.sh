@@ -167,6 +167,7 @@ function compile_kernel {
     cp files/kernel_config "linux-$KERNEL_VERSION"/.config
     cd "linux-$KERNEL_VERSION"
     make -j $CORES
+    echo "done"
 }
 
 function compile_busybox {
@@ -176,14 +177,25 @@ function compile_busybox {
     cd "busybox-$BUSYBOX_VERSION"
     make -j $CORES
     make -j $CORES install
+    echo "done"
+}
+
+function compile_buildroot {
+    echo "-> Compiling buildroot..."
+    cd "$TARGET"
+    cp files/buildroot_config buildroot/.config
+    cd buildroot
+    make -j $CORES source
+    make -j $CORES
+    echo "done"
 }
 
 function compile_sources {
     # Redirect stdout and stderr
     exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
     echo "* Compiling sources..."
-    compile_kernel
-    compile_busybox
+    #compile_kernel
+    #compile_busybox
     create_initramfs
 }
 
@@ -264,7 +276,9 @@ while [ "$1" != "" ]; do
                                 ;;
         --ck )                  compile_kernel
                                 ;;
-        --cb )                  compile_busybox
+        --cbb )                 compile_busybox
+                                ;;
+        --cbr )                 compile_buildroot
                                 ;;
         * )                     usage
                                 exit 1
