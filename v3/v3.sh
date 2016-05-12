@@ -6,7 +6,6 @@ OUTPUT_ERR="errorout_1.log"
 export KERNEL_VERSION="4.2.3"
 export BUSYBOX_VERSION="1.24.2"
 export BUILDROOT_COMMIT="1daa4c95a4bb93621292dd5c9d24285fcddb4026"
-export CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
 export PATCH="linux-smsc95xx_allow_mac_setting.patch"
 # TODO: right board name?? (vexpress_ca15_tc2 / vexpress_ca5x2 / vexpress_ca9x4)
@@ -81,7 +80,7 @@ function create_initramfs {
     cd "$TARGET"
     mkdir initramfs
     cd initramfs
-    
+
     echo -n "-> Copying udhcpd-script... "
     mkdir etc
     cd etc
@@ -89,7 +88,7 @@ function create_initramfs {
     chmod 755 simple.script
     cd ..
     echo "done"
-    
+
     echo -n "-> Copying and linking busybox... "
     cp -rp "$TARGET/busybox-$BUSYBOX_VERSION/_install"/* .
     echo "done"
@@ -126,8 +125,8 @@ function compile_buildroot {
     echo "-> Compiling buildroot..."
     cd "$TARGET/buildroot"
     cp "$TARGET/files/buildroot_config" .config
-    make -j $CORES source
-    make -j $CORES
+    make source
+    make
     cd output/build/linux-$KERNEL_VERSION/
     make $DTB_FILE
     echo "done"
@@ -146,29 +145,26 @@ function start_qemu {
     echo "* Starting QEMU..."
     cd "$TARGET/buildroot/output"
     KERNEL_PATH="images/zImage"
-    #KERNEL_PATH="build/linux-4.2.3/arch/arm/boot/zImage"
-    #KERNEL_PATH="../../linux-4.2.3/arch/arm/boot/zImage"
     DTB_PATH="build/linux-$KERNEL_VERSION/arch/arm/boot/dts/$DTB_FILE"
-    INITRAMFS_PATH="images/rootfs.cpio"
+    INITRAMFS_PATH="images/rootfs.cpio.uboot"
     QEMU_ARCH="arm"
     MACHINE="vexpress-a9"
     MEMORY="512"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
         -kernel "$KERNEL_PATH" \
+        -initrd "$INITRAMFS_PATH" \
         -dtb "$DTB_PATH" \
         -m $MEMORY \
         -net nic,macaddr="$MACADDR" \
         -net vde,sock=/tmp/vde2-tap0.ctl \
         -append "console=ttyAMA0 init=/bin/sh root=/dev/ram0" \
         -nographic
-        # initramfs included in kernel (buildroot's BR2_TARGET_ROOTFS_INITRAMFS)
-        #-initrd "$INITRAMFS_PATH" \
 }
 
 function usage {
     echo "Usage: $0 [--dn ][--pa ][--cp ][--co ][--qe]
- 
+
   --clean               delete the target directory
   --dn                  download sources
   --pa                  patch sources
