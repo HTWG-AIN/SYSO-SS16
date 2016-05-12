@@ -1,4 +1,4 @@
-setenv rpi 18
+setenv rpi 17
 setenv tftppath "/rpi/${rpi}"
 
 setenv bootargs ${bootargs} smsc95xx.macaddr=${usbethaddr}

@@ -55,6 +55,7 @@ function download_buildroot {
         echo "already downloaded"
     fi  
 }
+
 function download_sources {
     echo "* Downloading sources..."
     # Buildroot takes care of downloading and compiling the kernel, BusyBox and U-Boot
@@ -67,9 +68,29 @@ function patch_sources {
     patch -f -p1 < "$TARGET/files/$PATCH"
 }
 
+function compile_tftpboot_script {
+    echo -n "-> Compiling tftpboot script... "
+    #sed -i "s/^setenv rpi [0-9]+$/setenv rpi $1/" "$TARGET/files/tftpboot.scr.txt"
+    cat "$TARGET/files/tftpboot.scr.txt" | sed -r "s/^setenv rpi.*$/setenv rpi $RPI/" > "$TARGET/files/tftpboot.scr.txt.tmp"
+    mv "$TARGET/files/tftpboot.scr.txt.tmp" "$TARGET/files/tftpboot.scr.txt"
+    mkimage -A arm -O linux -T script -C none -d "$TARGET/files/tftpboot.scr.txt" "$TARGET/tftpboot.scr" > /dev/null 2>&1
+    echo "done"
+}
+
+function copy_to_tftp_folder {
+    echo -n "-> Copying generated images to TFTP folder... "
+    TFTP_FOLDER_PATH="/srv/tftp/rpi/$1"
+    cat "$TARGET/buildroot/output/images/zImage" > "$TFTP_FOLDER_PATH/zImage"
+    cat "$TARGET/buildroot/output/images/rootfs.cpio.uboot" > "$TFTP_FOLDER_PATH/rootfs.cpio.uboot"
+    cat "$TARGET/buildroot/output/build/linux-$KERNEL_VERSION/arch/arm/boot/dts/bcm2835-rpi-b.dtb" > "$TFTP_FOLDER_PATH/bcm2835-rpi-b.dtb"
+    cat "$TARGET/tftpboot.scr" > "$TFTP_FOLDER_PATH/tftpboot.scr"
+    echo "done"
+}
+
 function copy_sources {
-    echo "* Copying GitLab sources..."
-    echo "* unused"
+    echo "* Setting up TFTP server files for raspberry number $RPI"
+    compile_tftpboot_script $RPI
+    copy_to_tftp_folder $RPI
 }
 
 function create_initramfs_overlay {
@@ -136,12 +157,12 @@ function start_qemu {
 }
 
 function usage {
-    echo "Usage: $0 [--dn ][--pa ][--cp ][--co ][--qe]
+    echo "Usage: $0 [--dn ][--pa ][--cp {rpi_number} ][--co ][--qe]
 
   --clean               delete the target directory
   --dn                  download sources
   --pa                  patch sources
-  --cp                  copy GitLab sources -> TODO
+  --cp                  copy generated files to TFTP folder
   --co                  compile sources
   --qe                  start qemu and a windows terminal to the serial port
   --tn                  connect to qemu via telnet
@@ -183,7 +204,9 @@ while [ "$1" != "" ]; do
                                 ;;
         --pa )                  patch_sources
                                 ;;
-        --cp )                  copy_sources
+        --cp )                  shift
+                                export RPI=$1
+                                copy_sources
                                 ;;
         --co )                  compile_sources
                                 ;;
