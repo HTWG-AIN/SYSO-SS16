@@ -21,6 +21,7 @@ echo "Mounting /dev/pts"
 mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
+sleep 10
 /etc/init.d/S40udhcpc start
 /etc/init.d/S50dropbear start
 
