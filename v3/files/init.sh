@@ -22,7 +22,7 @@ mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
 echo "Starting udhcpc"
-udhcpc
+udhcpc -i eth0
 
 echo "Starting telnetd"
 # TODO: if telnetd executes /bin/login, some programs (such as ls) won't send their stdout
