@@ -10,16 +10,15 @@ export CORES=$(cat /proc/cpuinfo | grep processor | wc -l)
 export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
 export PATCH="linux-smsc95xx_allow_mac_setting.patch"
 # TODO: right board name?? (vexpress_ca15_tc2 / vexpress_ca5x2 / vexpress_ca9x4)
-export BOARD_NAME="vexpress_ca5x2"
+export BOARD_NAME="vexpress_ca9x4"
+export DTB_FILE="vexpress-v2p-ca9.dtb"
 
 # Environment variables
-export PATH="$TOOLCHAIN_PATH:$PATH"
+export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
 export ARCH="arm"
-export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf"
-export CC="ccache gcc"
-
-# arch needs to be set before accesing it
-KERNEL_PATH="linux-$KERNEL_VERSION/arch/$ARCH/boot/"
+export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
+export TOOLCHAIN_PREFIX="armv6j-rpi-linux-gnueabihf"
+#export CC="ccache gcc"
 
 function calc_usr_postfix {
     case $USER in
@@ -129,6 +128,8 @@ function compile_buildroot {
     cp "$TARGET/files/buildroot_config" .config
     make -j $CORES source
     make -j $CORES
+    cd output/build/linux-$KERNEL_VERSION/
+    make $DTB_FILE
     echo "done"
 }
 
@@ -143,18 +144,26 @@ function compile_sources {
 
 function start_qemu {
     echo "* Starting QEMU..."
-    cd "$TARGET"
+    cd "$TARGET/buildroot/output"
+    KERNEL_PATH="images/uImage"
+    #KERNEL_PATH="build/linux-4.2.3/arch/arm/boot/zImage"
+    #KERNEL_PATH="../../linux-4.2.3/arch/arm/boot/zImage"
+    DTB_PATH="build/linux-$KERNEL_VERSION/arch/arm/boot/dts/$DTB_FILE"
+    INITRAMFS_PATH="images/rootfs.cpio"
     QEMU_ARCH="arm"
     MACHINE="vexpress-a9"
+    MEMORY="512"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
-        -kernel $KERNEL_PATH"zImage" \
-        -dtb $KERNEL_PATH"dts/vexpress-v2p-ca9.dtb" \
-        -initrd "initramfs.cpio" \
+        -kernel "$KERNEL_PATH" \
+        -dtb "$DTB_PATH" \
+        -m $MEMORY \
         -net nic,macaddr="$MACADDR" \
         -net vde,sock=/tmp/vde2-tap0.ctl \
-        -append "console=ttyAMA0" \
+        -append "console=ttyAMA0 init=/bin/sh root=/dev/ram0" \
         -nographic
+        # initramfs included in kernel (buildroot's BR2_TARGET_ROOTFS_INITRAMFS)
+        #-initrd "$INITRAMFS_PATH" \
 }
 
 function usage {
@@ -194,7 +203,7 @@ else
     echo "done"
 fi
 cd target
-TARGET=$(pwd)
+export TARGET=$(pwd)
 echo "* Target output directory: $TARGET"
 
 while [ "$1" != "" ]; do
