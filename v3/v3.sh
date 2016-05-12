@@ -206,6 +206,7 @@ while [ "$1" != "" ]; do
                                 ;;
         --cp )                  shift
                                 export RPI=$1
+                                test -z $RPI && usage && exit 1
                                 copy_sources
                                 ;;
         --co )                  compile_sources
