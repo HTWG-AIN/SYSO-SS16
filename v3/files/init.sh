@@ -21,10 +21,13 @@ echo "Mounting /dev/pts"
 mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
+echo "Starting udhcpc"
 sleep 10
 /etc/init.d/S40udhcpc start
 /etc/init.d/S50dropbear start
 
 /bin/systeminfo
+
+getty -L ttyAMA0 115200 vt100
 
 exec /bin/sh

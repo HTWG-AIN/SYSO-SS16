@@ -115,6 +115,15 @@ function create_initramfs_overlay {
     ${CROSS_COMPILE}gcc --static ../files/systeminfo.c -o bin/systeminfo
     echo "done"
 
+    echo -n "-> Copying inittab... "
+    cp "$TARGET/files/inittab" etc/
+    echo "done"
+
+    echo -n "-> Setting root password... "
+    cp "$TARGET/files/passwd" etc/
+    cp "$TARGET/files/shadow" etc/
+    echo "done"
+
     echo -n "-> Using provided init file... "
     mkdir sbin 2> /dev/null
     cp "$TARGET/files/init.sh" sbin/init
