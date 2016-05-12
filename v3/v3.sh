@@ -11,6 +11,7 @@ export PATCH="linux-smsc95xx_allow_mac_setting.patch"
 # TODO: right board name?? (vexpress_ca15_tc2 / vexpress_ca5x2 / vexpress_ca9x4)
 export BOARD_NAME="vexpress_ca9x4"
 export DTB_FILE="vexpress-v2p-ca9.dtb"
+#export DTB_FILE="bcm2835-rpi-b"
 
 # Environment variables
 export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
@@ -127,8 +128,6 @@ function compile_buildroot {
     cp "$TARGET/files/buildroot_config" .config
     make source
     make
-    cd output/build/linux-$KERNEL_VERSION/
-    make $DTB_FILE
     echo "done"
 }
 

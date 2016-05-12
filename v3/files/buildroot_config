@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot 2015.11-git-g11e924f Configuration
+# Buildroot 2015.11-git-gf381adf Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 
@@ -316,7 +316,10 @@ BR2_LINUX_KERNEL_ZIMAGE=y
 # BR2_LINUX_KERNEL_APPENDED_ZIMAGE is not set
 # BR2_LINUX_KERNEL_VMLINUX is not set
 # BR2_LINUX_KERNEL_IMAGE_TARGET_CUSTOM is not set
-# BR2_LINUX_KERNEL_DTS_SUPPORT is not set
+BR2_LINUX_KERNEL_DTS_SUPPORT=y
+BR2_LINUX_KERNEL_USE_INTREE_DTS=y
+# BR2_LINUX_KERNEL_USE_CUSTOM_DTS is not set
+BR2_LINUX_KERNEL_INTREE_DTS_NAME="vexpress-v2p-ca9 bcm2835-rpi-b"
 # BR2_LINUX_KERNEL_INSTALL_TARGET is not set
 
 #
