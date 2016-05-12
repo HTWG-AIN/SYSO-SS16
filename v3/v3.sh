@@ -145,7 +145,7 @@ function compile_sources {
 function start_qemu {
     echo "* Starting QEMU..."
     cd "$TARGET/buildroot/output"
-    KERNEL_PATH="images/uImage"
+    KERNEL_PATH="images/zImage"
     #KERNEL_PATH="build/linux-4.2.3/arch/arm/boot/zImage"
     #KERNEL_PATH="../../linux-4.2.3/arch/arm/boot/zImage"
     DTB_PATH="build/linux-$KERNEL_VERSION/arch/arm/boot/dts/$DTB_FILE"
