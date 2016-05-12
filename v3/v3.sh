@@ -8,17 +8,14 @@ export BUSYBOX_VERSION="1.24.2"
 export BUILDROOT_COMMIT="1daa4c95a4bb93621292dd5c9d24285fcddb4026"
 export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
 export PATCH="linux-smsc95xx_allow_mac_setting.patch"
-# TODO: right board name?? (vexpress_ca15_tc2 / vexpress_ca5x2 / vexpress_ca9x4)
 export BOARD_NAME="vexpress_ca9x4"
 export DTB_FILE="vexpress-v2p-ca9.dtb"
 #export DTB_FILE="bcm2835-rpi-b"
-
-# Environment variables
 export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
 export ARCH="arm"
 export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
 export TOOLCHAIN_PREFIX="armv6j-rpi-linux-gnueabihf"
-#export CC="ccache gcc"
+export INITRAMFS_OVERLAY_PATH="initramfs_overlay"
 
 function calc_usr_postfix {
     case $USER in
@@ -31,14 +28,13 @@ function calc_usr_postfix {
         *)
                     echo 03
                     ;;
-    esac    
+    esac
 }
 
 USR_POSTFIX=$(calc_usr_postfix)
 MACADDR="00:00:00:00:02:$USR_POSTFIX"
 TELNETPORT="502$USR_POSTFIX"
 TELNETADDR="127.0.0.1:$TELNETPORT"
-
 
 function clean {
     echo -n "* Cleaning up... "
@@ -76,49 +72,27 @@ function copy_sources {
     echo "* unused"
 }
 
-function create_initramfs {
+function create_initramfs_overlay {
     echo "* Creating initramfs..."
     cd "$TARGET"
-    mkdir initramfs
-    cd initramfs
+    mkdir "$INITRAMFS_OVERLAY_PATH" 2> /dev/null
+    cd "$INITRAMFS_OVERLAY_PATH"
 
     echo -n "-> Copying udhcpd-script... "
-    mkdir etc
-    cd etc
-    cp "$TARGET/files/simple.script" simple.script
-    chmod 755 simple.script
-    cd ..
-    echo "done"
-
-    echo -n "-> Copying and linking busybox... "
-    cp -rp "$TARGET/busybox-$BUSYBOX_VERSION/_install"/* .
+    mkdir etc 2> /dev/null
+    cp "$TARGET/files/simple.script" etc/simple.script
+    chmod 755 etc/simple.script
     echo "done"
 
     echo -n "-> Compiling systeminfo... "
-    cd bin
-    ${CROSS_COMPILE}-gcc --static ../../files/systeminfo.c -o systeminfo
-    cd ..
-    echo "done"
-
-    echo -n "-> Adding root user..."
-    echo "root::0:0:root:/root:/bin/sh" > etc/passwd && chmod 655 etc/passwd
-    echo "root:x:0:" > etc/group && chmod 655 etc/group
-    # Password: toor
-    #echo 'root:$1$hMn2tdnr$yYjf4Dobq.yhgpC2wcFFs1:::::::' > etc/shadow && chmod 600 etc/shadow
+    mkdir bin 2> /dev/null
+    ${CROSS_COMPILE}gcc --static ../files/systeminfo.c -o bin/systeminfo
     echo "done"
 
     echo -n "-> Using provided init file... "
-    cp "$TARGET/files/init.sh" init
-    chmod 755 init
-    echo "done"
-
-    echo -n "-> Packaging initramfs files into initramfs.cpio... "
-    find . | cpio --quiet -H newc -o > ../initramfs.cpio
-    echo "done"
-
-    echo -n "-> Cleaning up... "
-    cd ..
-    rm -rf initramfs
+    mkdir sbin 2> /dev/null
+    cp "$TARGET/files/init.sh" sbin/init
+    chmod 755 sbin/init
     echo "done"
 }
 
@@ -134,10 +108,10 @@ function compile_buildroot {
 function compile_sources {
     # Redirect stdout and stderr
     exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
+    echo "* Copying rootfs overlay files"
+    create_initramfs_overlay
     echo "* Compiling sources..."
     compile_buildroot
-    echo "* Using buildroot's initramfs"
-    #create_initramfs
 }
 
 function start_qemu {
@@ -157,7 +131,7 @@ function start_qemu {
         -m $MEMORY \
         -net nic,macaddr="$MACADDR" \
         -net vde,sock=/tmp/vde2-tap0.ctl \
-        -append "console=ttyAMA0 init=/bin/sh root=/dev/ram0" \
+        -append "console=ttyAMA0 init=/sbin/init root=/dev/ram0" \
         -nographic
 }
 
