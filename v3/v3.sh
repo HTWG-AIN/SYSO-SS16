@@ -106,7 +106,7 @@ function create_initramfs_overlay {
     echo "done"
 
     echo -n "-> Copying init.d scripts... "
-    cp "$TARGET/files/init.d" etc/
+    cp -r "$TARGET/files/init.d" etc/
     chmod +x etc/init.d/*
     echo "done"
 
