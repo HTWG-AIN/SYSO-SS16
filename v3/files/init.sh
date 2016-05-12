@@ -22,8 +22,7 @@ mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
 /etc/init.d/S40udhcpc start
-#/etc/init.d/S50dropbear start
-start-stop-daemon -S -q -p /var/run/dropbear.pid -x /usr/sbin/dropbear -- -R
+/etc/init.d/S50dropbear start
 
 /bin/systeminfo
 
