@@ -21,12 +21,9 @@ echo "Mounting /dev/pts"
 mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
-echo "Starting udhcpc"
-udhcpc -i eth0
-
-echo "Starting telnetd"
-# TODO: if telnetd executes /bin/login, some programs (such as ls) won't send their stdout
-telnetd -l /bin/sh
+/etc/init.d/S40udhcpc start
+#/etc/init.d/S50dropbear start
+start-stop-daemon -S -q -p /var/run/dropbear.pid -x /usr/sbin/dropbear -- -R
 
 /bin/systeminfo
 

@@ -99,10 +99,15 @@ function create_initramfs_overlay {
     mkdir "$INITRAMFS_OVERLAY_PATH" 2> /dev/null
     cd "$INITRAMFS_OVERLAY_PATH"
 
-    echo -n "-> Copying udhcpd-script... "
+    echo -n "-> Copying udhcpc config file... "
     mkdir etc 2> /dev/null
     cp "$TARGET/files/simple.script" etc/simple.script
     chmod 755 etc/simple.script
+    echo "done"
+
+    echo -n "-> Copying init.d scripts... "
+    cp "$TARGET/files/init.d" etc/
+    chmod +x etc/init.d/*
     echo "done"
 
     echo -n "-> Compiling systeminfo... "
