@@ -1,0 +1,49 @@
+#! /bin/sh
+#
+# udhcpc        very small DHCP client
+#
+#               adapted from Miquel van Smoorenburg, Ian Murdock's 
+#               /etc/init.d/skeleton by Mark.Carroll@Aetion.com
+#
+# Version:      1.0; 21 Oct 2001
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=udhcpc
+DAEMON=/sbin/$NAME
+PIDFILE=/var/run/$NAME.pid
+CONFFILE=/etc/$NAME.conf
+DESC="DHCP client daemon"
+
+test -x $DAEMON || exit 0
+
+set -e
+
+OPTIONS="-n -p $PIDFILE"
+test -r $CONFFILE && OPTIONS="$OPTIONS `<$CONFFILE cut -f 1 -d \#`"
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: "
+        $DAEMON $OPTIONS >/dev/null
+	echo "$NAME."
+	;;
+  stop)
+	echo -n "Stopping $DESC: "
+	test -r $PIDFILE && kill `cat $PIDFILE`
+	;;
+  restart|reload|force-reload)
+	echo -n "Restarting $DESC: "
+	test -r $PIDFILE && kill `cat $PIDFILE`
+	sleep 1
+        $DAEMON $OPTIONS >/dev/null
+	echo "$NAME."
+	;;
+  *)
+	N=/etc/init.d/$NAME
+	# echo "Usage: $N {start|stop|restart|reload|force-reload}" >&2
+	echo "Usage: $N {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0

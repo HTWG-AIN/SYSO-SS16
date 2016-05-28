@@ -1,0 +1,33 @@
+#!/bin/sh
+
+echo "Making directories"
+chown -R root:root /
+
+mkdir -p /proc
+mkdir -p /sys
+mkdir -p /etc
+mkdir -p /dev
+
+echo "Mounting /proc filesystem"
+mount -t proc proc /proc
+
+echo "Mounting /sys"
+mount -t sysfs sysfs /sys
+
+echo "Mounting /dev"
+mount -t devtmpfs dev /dev
+
+echo "Mounting /dev/pts"
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+
+echo "Starting udhcpc"
+sleep 10
+/etc/init.d/S40udhcpc start
+/etc/init.d/S50dropbear start
+
+/bin/systeminfo
+
+getty -L ttyAMA0 115200 vt100
+
+exec /bin/sh
