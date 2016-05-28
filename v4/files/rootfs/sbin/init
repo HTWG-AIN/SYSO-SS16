@@ -30,4 +30,4 @@ sleep 10
 
 getty -L ttyAMA0 115200 vt100
 
-exec /bin/sh
+#exec /bin/sh

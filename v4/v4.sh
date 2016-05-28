@@ -3,19 +3,52 @@
 # Constants
 OUTPUT="stdout_1.log"
 OUTPUT_ERR="errorout_1.log"
+
 export KERNEL_VERSION="4.2.3"
 export BUSYBOX_VERSION="1.24.2"
 export BUILDROOT_COMMIT="1daa4c95a4bb93621292dd5c9d24285fcddb4026"
+
 export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
-export PATCH="linux-smsc95xx_allow_mac_setting.patch"
-export BOARD_NAME="vexpress_ca9x4"
-export DTB_FILE="vexpress-v2p-ca9.dtb"
-#export DTB_FILE="bcm2835-rpi-b"
 export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
+
+if [ $# -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR/.."
+if [ ! -d "target" ]; then
+    echo -n "* Creating target folder... "
+    mkdir target
+    echo "done"
+    echo -n "* Copying files... "
+    cp -r "$DIR/files" target/
+    echo "done"
+else
+    echo -n "* Copying files... "
+    rm -rf target/files
+    cp -r "$DIR/files" target/
+    echo "done"
+fi
+cd target
+export TARGET=$(pwd)
+echo "* Target output directory: $TARGET"
+
+# Make variables
 export ARCH="arm"
 export CROSS_COMPILE="armv6j-rpi-linux-gnueabihf-"
-export TOOLCHAIN_PREFIX="armv6j-rpi-linux-gnueabihf"
-export INITRAMFS_OVERLAY_PATH="initramfs_overlay"
+
+# U-Boot variables
+export BOARD_NAME="vexpress_ca9x4"
+
+# Buildroot variables
+export PATCHES="$(echo $TARGET/files/patches/*)"
+export INITRAMFS_OVERLAY_PATH="$TARGET/initramfs_overlay"
+export TOOLCHAIN_PREFIX="${CROSS_COMPILE%-*}"
+export KERNEL_CONFIG="$TARGET/files/configs/kernel_config"
+export BUSYBOX_CONFIG="$TARGET/files/configs/busybox_config"
+BUILDROOT_CONFIG="$TARGET/files/configs/buildroot_config"
 
 function calc_usr_postfix {
     case $USER in
@@ -30,11 +63,6 @@ function calc_usr_postfix {
                     ;;
     esac
 }
-
-USR_POSTFIX=$(calc_usr_postfix)
-MACADDR="00:00:00:00:02:$USR_POSTFIX"
-TELNETPORT="502$USR_POSTFIX"
-TELNETADDR="127.0.0.1:$TELNETPORT"
 
 function clean {
     echo -n "* Cleaning up... "
@@ -94,47 +122,25 @@ function copy_sources {
 }
 
 function create_initramfs_overlay {
-    echo "* Creating initramfs..."
+    echo "* Creating initramfs overlay..."
     cd "$TARGET"
     mkdir "$INITRAMFS_OVERLAY_PATH" 2> /dev/null
     cd "$INITRAMFS_OVERLAY_PATH"
 
-    echo -n "-> Copying udhcpc config file... "
-    mkdir etc 2> /dev/null
-    cp "$TARGET/files/simple.script" etc/simple.script
-    chmod 755 etc/simple.script
-    echo "done"
-
-    echo -n "-> Copying init.d scripts... "
-    cp -r "$TARGET/files/init.d" etc/
-    chmod +x etc/init.d/*
+    echo -n "-> Copying files... "
+    cp -r "$TARGET"/files/rootfs/* .
     echo "done"
 
     echo -n "-> Compiling systeminfo... "
     mkdir bin 2> /dev/null
-    ${CROSS_COMPILE}gcc --static ../files/systeminfo.c -o bin/systeminfo
-    echo "done"
-
-    echo -n "-> Copying inittab... "
-    cp "$TARGET/files/inittab" etc/
-    echo "done"
-
-    echo -n "-> Setting root password... "
-    cp "$TARGET/files/passwd" etc/
-    cp "$TARGET/files/shadow" etc/
-    echo "done"
-
-    echo -n "-> Using provided init file... "
-    mkdir sbin 2> /dev/null
-    cp "$TARGET/files/init.sh" sbin/init
-    chmod 755 sbin/init
+    ${CROSS_COMPILE}gcc --static "$TARGET/files/systeminfo.c" -o bin/systeminfo
     echo "done"
 }
 
 function compile_buildroot {
     echo "-> Compiling buildroot..."
     cd "$TARGET/buildroot"
-    cp "$TARGET/files/buildroot_config" .config
+    cp "$BUILDROOT_CONFIG" .config
     make source
     make
     echo "done"
@@ -153,11 +159,13 @@ function start_qemu {
     echo "* Starting QEMU..."
     cd "$TARGET/buildroot/output"
     KERNEL_PATH="images/zImage"
+    DTB_FILE="vexpress-v2p-ca9.dtb"
     DTB_PATH="build/linux-$KERNEL_VERSION/arch/arm/boot/dts/$DTB_FILE"
     INITRAMFS_PATH="images/rootfs.cpio.uboot"
     QEMU_ARCH="arm"
     MACHINE="vexpress-a9"
     MEMORY="512"
+    MACADDR="00:00:00:00:02:$(calc_usr_postfix)"
     qemu-system-$QEMU_ARCH \
         -machine "$MACHINE" \
         -kernel "$KERNEL_PATH" \
@@ -183,32 +191,6 @@ function usage {
   -h, --help            show this help page, then exit
     "
 }
-
-
-if [ $# -lt 1 ]; then
-    usage
-    exit 1
-fi
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR/.."
-# echo "$PWD"
-if [ ! -d "target" ]; then
-    echo -n "* Creating target folder... "
-    mkdir target
-    echo "done"
-    echo -n "* Copying files... "
-    cp -r "$DIR/files" target/
-    echo "done"
-else
-    echo -n "* Copying files... "
-    rm -rf target/files
-    cp -r "$DIR/files" target/
-    echo "done"
-fi
-cd target
-export TARGET=$(pwd)
-echo "* Target output directory: $TARGET"
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -243,3 +225,4 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
+
