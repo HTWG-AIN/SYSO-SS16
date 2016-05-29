@@ -11,6 +11,8 @@ export BUILDROOT_COMMIT="1daa4c95a4bb93621292dd5c9d24285fcddb4026"
 export TOOLCHAIN_PATH="/group/SYSO_WS1516/crosstool-ng/tmp/armv6j-rpi-linux-gnueabihf"
 export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
 
+set -e
+
 if [ $# -lt 1 ]; then
     usage
     exit 1
@@ -122,17 +124,18 @@ function copy_sources {
 }
 
 function create_initramfs_overlay {
-    echo "* Creating initramfs overlay..."
-    cd "$TARGET"
-    mkdir "$INITRAMFS_OVERLAY_PATH" 2> /dev/null
+    echo "* Creating initramfs overlay directory..."
+    test -d "$INITRAMFS_OVERLAY_PATH" && rm -rf "$INITRAMFS_OVERLAY_PATH"
+    mkdir "$INITRAMFS_OVERLAY_PATH"
     cd "$INITRAMFS_OVERLAY_PATH"
 
     echo -n "-> Copying files... "
     cp -r "$TARGET"/files/rootfs/* .
+    chmod +x sbin/init
     echo "done"
 
     echo -n "-> Compiling systeminfo... "
-    mkdir bin 2> /dev/null
+    test -d bin || mkdir bin
     ${CROSS_COMPILE}gcc --static "$TARGET/files/systeminfo.c" -o bin/systeminfo
     echo "done"
 }
@@ -146,12 +149,30 @@ function compile_buildroot {
     echo "done"
 }
 
+function compile_modules {
+    export KDIR="$TARGET/buildroot/output/build/linux-$KERNEL_VERSION"
+    echo -n "-> Compiling kernel modules... "
+    cd "$TARGET/files/drivers"
+    cat Makefile
+    make
+    echo "done"
+    echo -n "-> Copying kernel modules to initramfs overlay directory... "
+    ls -l
+    # TODO: generated modules saved in /root for manual insertion once the kernel is booted
+    test -d "$INITRAMFS_OVERLAY_PATH/root" || mkdir "$INITRAMFS_OVERLAY_PATH/root"
+    cp *.ko "$INITRAMFS_OVERLAY_PATH/root"
+    echo "done"
+}
+
 function compile_sources {
     # Redirect stdout and stderr
     exec > >(tee "$OUTPUT") 2> >(tee "$OUTPUT_ERR" >&2)
-    echo "* Copying rootfs overlay files"
+    echo "* Copying rootfs overlay files..."
     create_initramfs_overlay
     echo "* Compiling sources..."
+    compile_buildroot
+    compile_modules
+    # FIXME: workaround to generate again cpio rootfs archives with compiled modules
     compile_buildroot
 }
 
@@ -225,4 +246,3 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
-
