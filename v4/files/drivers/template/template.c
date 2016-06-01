@@ -27,18 +27,7 @@ static struct cdev *driver_object;
 static struct class *class;
 #endif
 
-static int device_open(struct inode *inode, struct file *file) {
-    return 0;
-}
-
-static int device_release(struct inode *inode, struct file *file) {
-    return 0;
-}
-
-static struct file_operations fops = {
-    .open = device_open,
-    .release = device_release
-};
+static struct file_operations fops = {};
 
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
