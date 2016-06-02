@@ -94,7 +94,7 @@ static int driver_release(struct inode *device_file, struct file *instance) {
 
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
     printk(KERN_DEBUG DEV_NAME " write called with %d bytes\n", count);
-    return 0;
+    return count;
 }
 
 module_init(mod_init);
