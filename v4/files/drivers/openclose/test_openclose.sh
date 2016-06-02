@@ -13,7 +13,7 @@ dmesg | grep -i $MOD_NAME | tail -1
 
 echo
 echo "** /proc/devices"
-cat /proc/devices
+cat /proc/devices | grep -i $MOD_NAME
 
 echo
 echo "** Removing module..."
