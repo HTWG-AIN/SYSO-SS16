@@ -163,7 +163,8 @@ void *access_tests(void *arg) {
 }
 
 void help() {
-    printf("\nUsage: access -d {DEVICE_PATH} [OPTIONS]\n"
+    // TODO: change usage like this: access [OPTIONS] [device ...]
+    printf("\nUsage: access -d {device} [OPTIONS]\n"
            "\n"
            "\tOPTIONS:\n"
            "\t-o           perform open test\n"
