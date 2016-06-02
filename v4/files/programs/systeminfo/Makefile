@@ -2,14 +2,10 @@ ifeq ($(PROGRAMS_DIR),)
 PROGRAMS_DIR := .
 endif
 
-systeminfo: systeminfo.o
-	$(CC) --static -lpthread systeminfo.o -o $(PROGRAMS_DIR)/systeminfo
-	rm -f *.o
-
-systeminfo.o: systeminfo.c
-	$(CC) -c systeminfo.c
+systeminfo: systeminfo.c
+	$(CC) --static systeminfo.c -o $(PROGRAMS_DIR)/systeminfo
 
 clean:
-	rm -f *.o systeminfo
+	rm -f systeminfo
 
 all: systeminfo

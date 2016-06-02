@@ -2,14 +2,12 @@ ifeq ($(PROGRAMS_DIR),)
 PROGRAMS_DIR := .
 endif
 
-access: access.o
-	$(CC) --static -lpthread access.o -o $(PROGRAMS_DIR)/access
-	rm *.o
+CC=gcc
 
-access.o: access.c
-	$(CC) -c access.c
+access: access.c
+	$(CC) --static -g -pthread access.c -o $(PROGRAMS_DIR)/access
 
 clean:
-	rm -f *.o access
+	rm -f access
 
 all: access

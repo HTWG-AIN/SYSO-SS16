@@ -112,7 +112,11 @@ static int driver_open(struct inode *device_file, struct file *instance) {
 }
 
 static int driver_release(struct inode *device_file, struct file *instance) {
-    printk(KERN_DEBUG DEV_NAME " release called\n");
+    printk(KERN_DEBUG DEV_NAME " release called on minor %d\n", MINOR(device_file->i_rdev));
+    switch (MINOR(device_file->i_rdev)) {
+        case 1:
+            atomic_inc(&lock);
+    }
     return 0;
 }
 

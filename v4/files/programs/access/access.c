@@ -36,13 +36,19 @@ int main(int argc, char *argv[]) {
 
     program_params = malloc(sizeof(program_params_t));
 
-    while ((opt = getopt(argc, argv, "d:ot:h")) != -1) {
+    while ((opt = getopt(argc, argv, "d:orwt:h")) != -1) {
         switch (opt) {
             case 'd':
                 program_params->device_path = optarg;
                 break;
             case 'o':
                 program_params->open_test = 1;
+                break;
+            case 'r':
+                program_params->read_test = 1;
+                break;
+            case 'w':
+                program_params->write_test = 1;
                 break;
             case 't':
                 program_params->sleep_time_ms = atoi(optarg);
@@ -54,23 +60,27 @@ int main(int argc, char *argv[]) {
     }
 
     if (!program_params->device_path) {
-        fprintf(stderr, "A device path must be supplied\n");
+        fprintf(stderr, "A device path must be supplied!\n");
         help();
         return EXIT_FAILURE;
     }
 
     threads = malloc(NUM_THREADS * sizeof(pthread_t));
-    thread_params = malloc(NUM_THREADS * sizeof(thread_params_t));
+    thread_params = malloc(NUM_THREADS * sizeof(thread_params_t *));
     for (i = 0; i < NUM_THREADS; i++) {
+        thread_params[i] = malloc(sizeof(thread_params_t));
         thread_params[i]->program_params = program_params;
         thread_params[i]->thread_num = i;
-        pthread_create(&threads[i], NULL, access_tests, thread_params);
+        pthread_create(&threads[i], NULL, access_tests, thread_params[i]);
     }
 
     for (i = 0; i < NUM_THREADS; i++) {
         pthread_join(threads[i], NULL);
     }
 
+    for (i = 0; i < NUM_THREADS; i++) {
+        free(thread_params[i]);
+    }
     free(program_params);
     free(threads);
     free(thread_params);
@@ -85,6 +95,7 @@ void *access_tests(void *arg) {
     char buf[BUFFER_SIZE];
 
     params = (thread_params_t *) arg;
+    prog_params = params->program_params;
     sleep_time.tv_sec = 0;
     sleep_time.tv_nsec = (1000000 * prog_params->sleep_time_ms);
 
@@ -95,12 +106,12 @@ void *access_tests(void *arg) {
         for (i = 0; i < TEST_REPETITIONS; i++) {
             if ((fd = open(prog_params->device_path, O_RDONLY)) < 0) {
                 fprintf(stderr, "-> thread%d: open_test%d: error opening file %s\n", params->thread_num, i, prog_params->device_path);
+            } else {
+                printf("-> thread%d: open_test%d completed succesfully\n", params->thread_num, i, prog_params->device_path);
                 clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
                 if (close(fd) < 0) {
                     fprintf(stderr, "-> thread%d: open_test%d: error closing file %s\n", params->thread_num, i, prog_params->device_path);
                 }
-            } else {
-                printf("-> thread%d: open_test%d completed succesfully\n", params->thread_num, i, prog_params->device_path);
             }
         }
     }
@@ -153,7 +164,7 @@ void *access_tests(void *arg) {
 
 void help() {
     printf("\nUsage: access -d {DEVICE_PATH} [OPTIONS]\n"
-           "\n\n"
+           "\n"
            "\tOPTIONS:\n"
            "\t-o           perform open test\n"
            "\t-r           perform read test\n"
