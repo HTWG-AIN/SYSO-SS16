@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# TODO: add support for external modules using BR2_EXTERNAL
+# (http://www.kaizou.org/2013/11/buildroot-custom-packages/)
+
 # Constants
 OUTPUT="stdout_1.log"
 OUTPUT_ERR="errorout_1.log"
@@ -163,17 +166,21 @@ function compile_buildroot {
 
 function compile_modules {
     export KDIR="$TARGET/buildroot/output/build/linux-$KERNEL_VERSION"
-    echo -n "-> Compiling kernel modules... "
+    echo "-> Compiling kernel modules..."
     cd "$TARGET/files/drivers"
-    cat Makefile
-    make
-    echo "done"
-    echo -n "-> Copying kernel modules to initramfs overlay directory... "
-    ls -l
-    # TODO: generated modules saved in /root for manual insertion once the kernel is booted
-    test -d "$INITRAMFS_OVERLAY_PATH/root" || mkdir "$INITRAMFS_OVERLAY_PATH/root"
-    cp *.ko "$INITRAMFS_OVERLAY_PATH/root"
-    echo "done"
+    for d in *; do
+        if [ -d "$d" ]; then
+            echo "--> $d"
+            cd "$d"
+            make
+            echo -n "-> Copying kernel modules to initramfs overlay directory... "
+            # TODO: generated modules saved in /root for manual insertion once the kernel is booted
+            test -d "$INITRAMFS_OVERLAY_PATH/root" || mkdir "$INITRAMFS_OVERLAY_PATH/root"
+            cp *.ko *.sh "$INITRAMFS_OVERLAY_PATH/root"
+            echo "done"
+            cd ..
+        fi
+    done
 }
 
 function compile_sources {
