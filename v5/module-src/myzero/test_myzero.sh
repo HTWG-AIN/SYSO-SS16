@@ -19,7 +19,10 @@ echo
 echo "** Access tests..."
 MAJOR=$(cat /proc/devices | grep -i $MOD_NAME | sed -r 's/^ *([0-9]+) .*$/\1/')
 mknod /dev/${MOD_NAME}_major0 c $MAJOR 0
+
 /usr/bin/access -d /dev/${MOD_NAME}_major0 -r
+/usr/bin/access -d /dev/${MOD_NAME}_major0 -r
+
 
 echo
 echo "** Removing module..."

@@ -4,6 +4,8 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 
 //#define CLASSIC_METHOD
 
@@ -15,6 +17,7 @@
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel Barea López <da431lop@htwg-konstanz.de>");
+MODULE_AUTHOR("Nicolas Wehrle <niwehrle@htwg-konstanz.de>");
 MODULE_AUTHOR("Nicolas Wehrle <niwehrle@htwg-konstanz.de>");
 MODULE_DESCRIPTION("Linux kernel module developed for the v4 exercise of Systemsoftware in the HTWG Konstanz");
 MODULE_DESCRIPTION("Zero device");
@@ -31,6 +34,7 @@ static struct class *class;
 static int driver_open(struct inode *device_file, struct file *instance);
 static int driver_release(struct inode *device_file, struct file *instance);
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset);
+static ssize_t driver_read_msg(char *msg, char __user *user, size_t amount);
 
 static struct file_operations fops = {
     .open = driver_open,
@@ -38,7 +42,21 @@ static struct file_operations fops = {
     .read = driver_read
 };
 
+struct data {
+    char msg[13];
+    char zero_msg[2];
+};
+
+static struct data *msg_data;
+
 static int __init mod_init(void) {
+    msg_data = (struct data*) kmalloc(sizeof(struct data), GFP_KERNEL);
+    if(!msg_data){
+        printk(KERN_ERR "Unable to allocate memory.");
+    }
+    strcpy(msg_data->msg, "Hello World\n");
+    strcpy(msg_data->zero_msg, "0");
+    
     #ifdef CLASSIC_METHOD
     if ((major = register_chrdev(0, DEV_NAME, &fops)) < 0) {
         printk(KERN_ALERT "Error registering device (%d)\n", major);
@@ -93,26 +111,52 @@ static int driver_release(struct inode *device_file, struct file *instance) {
     return 0;
 }
 
-static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
-    int minor;
-    size_t to_copy, not_copied;
-    char *msg;
 
+static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
+    
+    int minor;
+    
+    if(count == 0){
+        return 0;
+    }
+    
+    if(count == 1){
+        char out[1] = {'\0'};
+        return copy_to_user(user, out, 1) - 1;
+    }
+    
+    
     minor = iminor(instance->f_path.dentry->d_inode);
     printk(KERN_DEBUG DEV_NAME " read called on minor %d\n", minor);
+    
     switch (minor) {
         case 0:
-            msg = "0";
-            break;
+            return driver_read_msg(msg_data->zero_msg, user, count);
         case 1:
-            msg = "Hello World\n";
+            return driver_read_msg(msg_data->msg, user, count);
         default:
             return -ENOSYS;
     }
-    to_copy = min(strlen(msg) + 1, count);
-    not_copied = copy_to_user(user, msg, to_copy);
-    return to_copy - not_copied;
 }
+
+static ssize_t driver_read_msg(char *msg, char __user *user, size_t amount){
+
+    size_t to_copy, lenght;
+    ssize_t copied;
+    
+    lenght = strlen(msg) + 1;
+    to_copy = min(lenght, amount);
+    copied = to_copy - copy_to_user(user, msg, to_copy);
+
+    if(copied + 1 < lenght){
+        memcpy(msg, (msg+copied), lenght - copied);
+    } else {
+        strcpy(msg, "0");
+    }
+    return copied;
+}
+
+
 
 module_init(mod_init);
 module_exit(mod_exit);
