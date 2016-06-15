@@ -16,12 +16,27 @@ export PATH="$TOOLCHAIN_PATH/bin/:$PATH"
 
 set -e
 
+
+function usage {
+    echo "Usage: $0 [--dn ][--pa ][--cp {rpi_number} ][--co ][--qe]
+
+  --clean               delete the target directory
+  --dn                  download sources
+  --pa                  patch sources
+  --cp                  copy generated files to TFTP folder
+  --co                  compile sources
+  --qe                  start qemu and a windows terminal to the serial port
+  --tn                  connect to qemu via telnet
+  -h, --help            show this help page, then exit
+    "
+}
+
 if [ $# -lt 1 ]; then
     usage
     exit 1
 fi
 
-export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR/.."
 if [ ! -d "target" ]; then
     echo -n "* Creating target folder... "
@@ -54,7 +69,6 @@ export TOOLCHAIN_PREFIX="${CROSS_COMPILE%-*}"
 export KERNEL_CONFIG="$TARGET/files/configs/kernel_config"
 export BUSYBOX_CONFIG="$TARGET/files/configs/busybox_config"
 BUILDROOT_CONFIG="$TARGET/files/configs/buildroot_config"
-export BR2_EXTERNAL="$DIR/module-package"
 
 function calc_usr_postfix {
     case $USER in
@@ -157,8 +171,6 @@ function create_initramfs_overlay {
 }
 
 function compile_buildroot {
-    echo "-> Copying buildroot external modules into download folder"
-    "$DIR"/module-src/v4cp.sh "$DIR/module-src"
     echo "-> Compiling buildroot..."
     cd "$TARGET/buildroot"
     cp "$BUILDROOT_CONFIG" .config
@@ -168,7 +180,6 @@ function compile_buildroot {
 }
 
 function compile_modules {
-    # TODO: delete
     export KDIR="$TARGET/buildroot/output/build/linux-$KERNEL_VERSION"
     echo "-> Compiling kernel modules..."
     cd "$TARGET/files/drivers"
@@ -194,6 +205,9 @@ function compile_sources {
     create_initramfs_overlay
     echo "* Compiling sources..."
     compile_buildroot
+    compile_modules
+    # FIXME: workaround to generate again cpio rootfs archives with compiled modules
+    compile_buildroot
 }
 
 function start_qemu {
@@ -217,20 +231,6 @@ function start_qemu {
         -net vde,sock=/tmp/vde2-tap0.ctl \
         -append "console=ttyAMA0 init=/sbin/init root=/dev/ram0" \
         -nographic
-}
-
-function usage {
-    echo "Usage: $0 [--dn ][--pa ][--cp {rpi_number} ][--co ][--qe]
-
-  --clean               delete the target directory
-  --dn                  download sources
-  --pa                  patch sources
-  --cp                  copy generated files to TFTP folder
-  --co                  compile sources
-  --qe                  start qemu and a windows terminal to the serial port
-  --tn                  connect to qemu via telnet
-  -h, --help            show this help page, then exit
-    "
 }
 
 while [ "$1" != "" ]; do
