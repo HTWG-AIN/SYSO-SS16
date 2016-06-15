@@ -45,6 +45,7 @@ static struct file_operations fops = {
 struct data {
     char msg[13];
     char zero_msg[2];
+    size_t read_counter;
 };
 
 static struct data *msg_data;
@@ -56,6 +57,7 @@ static int __init mod_init(void) {
     }
     strcpy(msg_data->msg, "Hello World\n");
     strcpy(msg_data->zero_msg, "0");
+    msg_data->read_counter = 0;
     
     #ifdef CLASSIC_METHOD
     if ((major = register_chrdev(0, DEV_NAME, &fops)) < 0) {
@@ -90,6 +92,10 @@ static int __init mod_init(void) {
 }
 
 static void __exit mod_exit(void) {
+    printk(KERN_DEBUG DEV_NAME " number of chars returned:  %d\n", msg_data->read_counter);
+
+    kfree(msg_data)
+    
     #ifdef CLASSIC_METHOD
     unregister_chrdev(major, DEV_NAME);
     #else
@@ -122,6 +128,7 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
     
     if(count == 1){
         char out[1] = {'\0'};
+        msg_data->read_counter++;
         return copy_to_user(user, out, 1) - 1;
     }
     
@@ -153,6 +160,9 @@ static ssize_t driver_read_msg(char *msg, char __user *user, size_t amount){
     } else {
         strcpy(msg, "0");
     }
+    
+    msg_data->read_counter += copied;
+    
     return copied;
 }
 
