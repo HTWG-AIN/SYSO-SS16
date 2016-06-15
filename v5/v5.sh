@@ -169,7 +169,7 @@ function create_initramfs_overlay {
 
 function compile_buildroot {
     echo "-> Copying buildroot external modules into download folder"
-    "$DIR"/module-src/v4cp.sh "$DIR/module-src"
+    "$DIR"/module-src/v5cp.sh "$DIR/module-src"
     echo "-> Compiling buildroot..."
     cd "$TARGET/buildroot"
     cp "$BUILDROOT_CONFIG" .config
