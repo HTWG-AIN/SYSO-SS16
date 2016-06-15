@@ -138,18 +138,6 @@ function copy_sources {
     copy_to_tftp_folder $RPI
 }
 
-function compile_programs {
-    echo "-> Compiling programs in $PROGRAMS_DIR..."
-    cd "$TARGET/files/programs"
-    for d in *; do
-        if [ -d "$d" ]; then
-            cd "$d"
-            make
-            cd ..
-        fi
-    done
-    #echo "done"
-}
 
 function create_initramfs_overlay {
     echo "* Creating initramfs overlay directory..."
@@ -164,7 +152,6 @@ function create_initramfs_overlay {
 
     test -d usr/bin || mkdir -p usr/bin
     export PROGRAMS_DIR="$(pwd)/usr/bin"
-    compile_programs
 }
 
 function compile_buildroot {
