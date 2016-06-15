@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot 2015.11-git-gf8b1f66 Configuration
+# Buildroot 2015.11-git-g4c8ba52-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 
@@ -2431,3 +2431,18 @@ BR2_LINUX_KERNEL_CUSTOM_GIT_VERSION=""
 # BR2_PACKAGE_INPUT_TOOLS_EVTEST is not set
 # BR2_BFIN_FDPIC is not set
 # BR2_BFIN_FLAT is not set
+
+#
+# User-provided options
+#
+BR2_PACKAGE_SYSO=y
+
+#
+# SYSO Modules
+#
+BR2_PACKAGE_ACCESS=y
+BR2_PACKAGE_TEMPLATE=y
+BR2_PACKAGE_OPENCLOSE=y
+BR2_PACKAGE_SYSTEMINFO=y
+BR2_PACKAGE_MYZERO=y
+BR2_PACKAGE_MYNULL=y

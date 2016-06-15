@@ -1,3 +1,4 @@
 target/
 */stdout_*.log
 */errorout_*.log
+*/.DS_Store
