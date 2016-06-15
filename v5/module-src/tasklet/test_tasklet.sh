@@ -1,6 +1,6 @@
 #!/bin/sh
 
-MOD_NAME="template"
+MOD_NAME="tasklet"
 
 echo
 echo "** Module info"
