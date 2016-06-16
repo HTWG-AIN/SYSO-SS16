@@ -4,6 +4,9 @@
 #include <linux/init.h>
 #include <linux/module.h>
 
+#include <linux/uaccess.h>
+
+
 //#define CLASSIC_METHOD
 
 #define DEV_NAME "buf"
@@ -31,6 +34,10 @@ static int driver_open(struct inode *device_file, struct file *instance);
 static int driver_release(struct inode *device_file, struct file *instance);
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset);
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset);
+static ssize_t read_from_buffer(char __user *user, size_t until);
+static ssize_t write_to_bufffer(const char __user *user, size_t count);
+static int lock_mutex();
+
 
 static struct file_operations fops = {
     .open = driver_open,
@@ -38,6 +45,18 @@ static struct file_operations fops = {
     .read = driver_read,
     .write = driver_write
 };
+
+static int buff_size_max = 100;
+static buffer_struct *buffer;
+
+struct buffer_struct {
+    int size;
+    char buff[buff_size_max];
+    int offset;
+};
+
+static DEFINE_MUTEX(mutex);
+
 
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
@@ -69,6 +88,16 @@ static int __init mod_init(void) {
     device_create(class, NULL, dev_number, NULL, "%s", DEV_NAME);
     printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
+
+  buffer = (struct buffer_struct*) kmalloc(sizeof(struct buffer_struct), GFP_KERNEL);
+    if(!buffer){
+        printk(KERN_ERR DEV_NAME ": unable to allocate memory.");
+    }
+
+    buffer->size = 0:
+    buffer->offset = 0;
+
+
     return 0;
 }
 
@@ -81,6 +110,10 @@ static void __exit mod_exit(void) {
     cdev_del(driver_object);
     unregister_chrdev_region(dev_number, 1);
     #endif
+
+    kfree(msg_data);
+
+
     printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
 }
 
@@ -92,12 +125,128 @@ static int driver_release(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": release called\n");
 }
 
+static int lock_mutex(){
+    while (!mutex_trylock(&mutex)) {
+        if (signal_pending(current)) {
+            printk(KERN_ERR DEV_NAME ": signal received\n");
+            mutex_unlock(&mutex);
+            return 1;
+        }
+    }
+    return 0
+}
+
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
+    size_t to_copy, to_copy1;
+    ssize_t copied;
+    
     printk(KERN_DEBUG DEV_NAME ": read called\n");
+
+    if(lock_mutex()) return -EIO;
+
+    while(buffer->size == 0){
+        mutex_unlock(&mutex);
+        while (buffer->size == 0){
+            //sleep 200ms
+            schedule_timeout_interruptible(200 * HZ / 1000);
+            //TODO sleep till available
+        }
+        if(lock_mutex()) return -EIO;
+    }
+
+    if(count > buffer->size){
+        to_copy = buffer->offset + buffer->size;
+    } else {
+        to_copy = buffer-> offset + count;
+    }
+    copied = 0;
+
+    if(to_copy >= buff_size_max){
+        to_copy1 = buff_size_max - buffer->offset; 
+        copied = read_from_buffer(user, to_copy1);
+
+        if(copied != to_copy1)
+            return copied;
+
+        buffer -> offset = 0;
+    }
+    copied += read_from_buffer(user, to_copy % buff_size_max);
+
+    mutex_unlock(&mutex)
+    return copied;
 }
 
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
+    size_t available, written;
+
     printk(KERN_DEBUG DEV_NAME ": write called\n");
+
+
+     while(buffer->size == buff_size_max){
+        mutex_unlock(&mutex);
+        while (buffer->size == buff_size_max){
+            //sleep 200ms
+            schedule_timeout_interruptible(200 * HZ / 1000);
+            //TODO sleep till available
+        }
+        if(lock_mutex()) return -EIO;
+    }
+
+    available = buff_size_max - buffer->size;
+
+
+    if(count > available){
+        written = write_to_bufffer(user, available);
+    } else{
+        written = write_to_bufffer(user, count);
+    }
+
+    mutex_unlock(&mutex);
+    return written;
+
+}
+
+static ssize_t read_from_buffer(char __user *user, size_t until){
+    size_t to_copy;
+    ssize_t copied;
+
+    to_copy = until - buffer->offset;
+
+    copied = to_copy - copy_to_user(user, buffer->buff + buffer->offset, to_copy);
+    buffer-> size -= copied;
+
+    reutrn copied;
+}
+
+static ssize_t write_to_bufffer(const char __user *user, size_t count){
+    size_t not_copied, to_copy, rest, copied;
+
+    if(count + offset > buff_size_max){
+        to_copy = buff_size_max - offset;
+        rest = count - to_copy;
+    } else {
+        to_copy = count;
+        rest = 0;
+    }
+
+
+    not_copied = copy_from_user(buffer->buff + buffer->offfset, user, to_copy);
+    copied = to_copy - not_copied;
+    buffer->offset += copied;
+    buffer->size += copied;
+
+    if(not_copied)
+        return copied;
+
+    if(rest){
+        not_copied = copy_from_user(buffer->buff, user+copied, rest);
+        copied = rest - not_copied;
+        buffer-> offset =  copied;
+        buffer-> size += copied;
+        return count - not_copied;
+    }
+
+    return count
 }
 
 module_init(mod_init);
