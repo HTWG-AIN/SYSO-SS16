@@ -1,0 +1,4 @@
+config BR2_PACKAGE_TEMPLATE
+	bool "wq"
+	help
+	  This is a template.
