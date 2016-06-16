@@ -14,6 +14,7 @@
 #define REGION_NAME "MYZERO"
 #define CLASS_NAME "myzero"
 #endif
+#define NUM_MINORS 2
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel Barea López <da431lop@htwg-konstanz.de>");
@@ -66,22 +67,22 @@ static int __init mod_init(void) {
     }
     printk(KERN_INFO DEV_NAME " device succesfully registered with major number %d\n", major);
     #else
-    if (alloc_chrdev_region(&dev_number, 0, 1, REGION_NAME)) {
+    if (alloc_chrdev_region(&dev_number, 0, NUM_MINORS, REGION_NAME)) {
         printk("Error in alloc_chrdev_region\n");
         return -EIO;
     }
     if ((driver_object = cdev_alloc()) == NULL) {
         printk("Error in cdev_alloc\n");
         kobject_put(&driver_object->kobj);
-        unregister_chrdev_region(dev_number, 1);
+        unregister_chrdev_region(dev_number, NUM_MINORS);
         return -EIO;
     }
     driver_object->owner = THIS_MODULE;
     driver_object->ops = &fops;
-    if (cdev_add(driver_object, dev_number, 1)) {
+    if (cdev_add(driver_object, dev_number, NUM_MINORS)) {
         printk("Error in cdev_add\n");
         kobject_put(&driver_object->kobj);
-        unregister_chrdev_region(dev_number, 1);
+        unregister_chrdev_region(dev_number, NUM_MINORS);
         return -EIO;
     }
     class = class_create(THIS_MODULE, CLASS_NAME);
@@ -94,15 +95,15 @@ static int __init mod_init(void) {
 static void __exit mod_exit(void) {
     printk(KERN_DEBUG DEV_NAME " number of chars returned:  %d\n", msg_data->read_counter);
 
-    kfree(msg_data)
-    
+    kfree(msg_data);
+
     #ifdef CLASSIC_METHOD
     unregister_chrdev(major, DEV_NAME);
     #else
     device_destroy(class, dev_number);
     class_destroy(class);
     cdev_del(driver_object);
-    unregister_chrdev_region(dev_number, 1);
+    unregister_chrdev_region(dev_number, NUM_MINORS);
     #endif
     printk(KERN_INFO DEV_NAME " device succesfully unregistered\n");
 }
@@ -117,22 +118,19 @@ static int driver_release(struct inode *device_file, struct file *instance) {
     return 0;
 }
 
-
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
-    
     int minor;
-    
-    if(count == 0){
+
+    if(count == 0) {
         return 0;
     }
-    
-    if(count == 1){
+
+    if (count == 1) {
         char out[1] = {'\0'};
         msg_data->read_counter++;
         return copy_to_user(user, out, 1) - 1;
     }
-    
-    
+
     minor = iminor(instance->f_path.dentry->d_inode);
     printk(KERN_DEBUG DEV_NAME " read called on minor %d\n", minor);
     
@@ -147,26 +145,23 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
 }
 
 static ssize_t driver_read_msg(char *msg, char __user *user, size_t amount){
-
     size_t to_copy, lenght;
     ssize_t copied;
-    
+
     lenght = strlen(msg) + 1;
     to_copy = min(lenght, amount);
     copied = to_copy - copy_to_user(user, msg, to_copy);
 
-    if(copied + 1 < lenght){
+    if (copied + 1 < lenght)  {
         memcpy(msg, (msg+copied), lenght - copied);
     } else {
         strcpy(msg, "0");
     }
-    
+
     msg_data->read_counter += copied;
-    
+
     return copied;
 }
-
-
 
 module_init(mod_init);
 module_exit(mod_exit);

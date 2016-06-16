@@ -12,6 +12,7 @@
 #define REGION_NAME "MYZERO"
 #define CLASS_NAME "myzero"
 #endif
+#define NUM_MINORS 2
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel Barea López <da431lop@htwg-konstanz.de>");
@@ -41,32 +42,32 @@ static struct file_operations fops = {
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
     if ((major = register_chrdev(0, DEV_NAME, &fops)) < 0) {
-        printk(KERN_ALERT "Error registering device (%d)\n", major);
+        printk(KERN_ALERT DEV_NAME ": error registering device (%d)\n", major);
         return major;
     }
-    printk(KERN_INFO DEV_NAME " device succesfully registered with major number %d\n", major);
+    printk(KERN_INFO DEV_NAME ": device succesfully registered with major number %d\n", major);
     #else
-    if (alloc_chrdev_region(&dev_number, 0, 1, REGION_NAME)) {
-        printk("Error in alloc_chrdev_region\n");
+    if (alloc_chrdev_region(&dev_number, 0, NUM_MINORS, REGION_NAME)) {
+        printk(KERN_ERR DEV_NAME ": error in alloc_chrdev_region\n");
         return -EIO;
     }
     if ((driver_object = cdev_alloc()) == NULL) {
-        printk("Error in cdev_alloc\n");
+        printk(KERN_ERR DEV_NAME ": error in cdev_alloc\n");
         kobject_put(&driver_object->kobj);
-        unregister_chrdev_region(dev_number, 1);
+        unregister_chrdev_region(dev_number, NUM_MINORS);
         return -EIO;
     }
     driver_object->owner = THIS_MODULE;
     driver_object->ops = &fops;
-    if (cdev_add(driver_object, dev_number, 1)) {
-        printk("Error in cdev_add\n");
+    if (cdev_add(driver_object, dev_number, NUM_MINORS)) {
+        printk(KERN_ERR DEV_NAME ": error in cdev_add\n");
         kobject_put(&driver_object->kobj);
-        unregister_chrdev_region(dev_number, 1);
+        unregister_chrdev_region(dev_number, NUM_MINORS);
         return -EIO;
     }
     class = class_create(THIS_MODULE, CLASS_NAME);
     device_create(class, NULL, dev_number, NULL, "%s", DEV_NAME);
-    printk(KERN_INFO DEV_NAME " device init succesfully completed\n");
+    printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
     return 0;
 }
@@ -78,18 +79,18 @@ static void __exit mod_exit(void) {
     device_destroy(class, dev_number);
     class_destroy(class);
     cdev_del(driver_object);
-    unregister_chrdev_region(dev_number, 1);
+    unregister_chrdev_region(dev_number, NUM_MINORS);
     #endif
-    printk(KERN_INFO DEV_NAME " device succesfully unregistered\n");
+    printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
 }
 
 static int driver_open(struct inode *device_file, struct file *instance) {
-    printk(KERN_DEBUG DEV_NAME " open called on minor %d\n", MINOR(device_file->i_rdev));
+    printk(KERN_DEBUG DEV_NAME ": open called on minor %d\n", MINOR(device_file->i_rdev));
     return 0;
 }
 
 static int driver_release(struct inode *device_file, struct file *instance) {
-    printk(KERN_DEBUG DEV_NAME " release called\n");
+    printk(KERN_DEBUG DEV_NAME ": release called\n");
     return 0;
 }
 
@@ -97,15 +98,18 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
     int minor;
     size_t to_copy, not_copied;
     char *msg;
+    char MSG_ZERO[] = "0";
+    char MSG_ONE[] = "Hello World\n";
 
     minor = iminor(instance->f_path.dentry->d_inode);
-    printk(KERN_DEBUG DEV_NAME " read called on minor %d\n", minor);
+    printk(KERN_DEBUG DEV_NAME ": read called on minor %d\n", minor);
     switch (minor) {
         case 0:
-            msg = "0";
+            msg = MSG_ZERO;
             break;
         case 1:
-            msg = "Hello World\n";
+            msg = MSG_ONE;
+            break;
         default:
             return -ENOSYS;
     }
