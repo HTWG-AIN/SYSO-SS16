@@ -92,7 +92,7 @@ static int driver_open(struct inode *device_file, struct file *instance) {
     while (!down_trylock(&s)) {
         printk(KERN_DEBUG DEV_NAME ": driver busy,  retrying after 200 ms...\n");
         // Sleep for 200 ms
-        schedule_timeout_interruptible(200 * HT / 1000);
+        schedule_timeout_interruptible(200 * HZ / 1000);
         if (signal_pending(current)) {
             printk(KERN_ERR DEV_NAME ": signal received\n");
             up(&s);
@@ -114,6 +114,7 @@ static int driver_release(struct inode *device_file, struct file *instance) {
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
     printk(KERN_DEBUG DEV_NAME ": read called\n");
     return 0;
+}
 
 module_init(mod_init);
 module_exit(mod_exit);

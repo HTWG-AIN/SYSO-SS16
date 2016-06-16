@@ -8,7 +8,7 @@ modinfo $MOD_NAME.ko
 
 echo
 echo "** Loading module..."
-insmod $MOD_NAME.ko
+modprobe $MOD_NAME
 dmesg | grep -i $MOD_NAME | tail -1
 
 echo

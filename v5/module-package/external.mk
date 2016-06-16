@@ -1,1 +1,1 @@
-include $(sort $(wildcard package/syso/*/*.mk))
+include $(sort $(wildcard $(BR2_EXTERNAL)/*/*.mk))

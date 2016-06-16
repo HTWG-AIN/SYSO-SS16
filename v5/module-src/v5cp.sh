@@ -7,7 +7,7 @@ prev_dir=$(pwd)
 cd $MODULE_SRC
 for d in */; do
     echo -n "## Preparing ${d%%/} Buildroot module... "
-    tar czf $DEST/${d%%/}.tar.gz $d
+    tar czf $DEST/${d%%/}-1.0.tar.gz $d
     echo "done"
 done
 cd $prev_dir

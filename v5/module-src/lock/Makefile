@@ -1,5 +1,5 @@
 ifneq ($(KERNELRELEASE),)
-obj-m := template.o
+obj-m := lock.o
 
 else
 PWD     := $(shell pwd)
