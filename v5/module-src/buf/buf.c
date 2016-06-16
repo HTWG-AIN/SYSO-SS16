@@ -3,22 +3,20 @@
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/mutex.h>
-#include <linux/sched.h>
 
 //#define CLASSIC_METHOD
 
-#define DEV_NAME "open_once"
+#define DEV_NAME "buf"
 #ifndef CLASSIC_METHOD
-#define REGION_NAME "OPEN_ONCE"
-#define CLASS_NAME "open_once"
+#define REGION_NAME "BUF"
+#define CLASS_NAME "buf"
 #endif
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Daniel Barea López <da431lop@htwg-konstanz.de>");
 MODULE_AUTHOR("Nicolas Wehrle <niwehrle@htwg-konstanz.de>");
 MODULE_DESCRIPTION("Linux kernel module developed for the v4 exercise of Systemsoftware in the HTWG Konstanz");
-MODULE_DESCRIPTION("Critical section management with a mutex");
+MODULE_DESCRIPTION("Blocking and non-blocking access modes");
 MODULE_VERSION("0.1");
 
 #ifdef CLASSIC_METHOD
@@ -29,16 +27,16 @@ static struct cdev *driver_object;
 static struct class *class;
 #endif
 
-static DEFINE_MUTEX(mutex);
-
 static int driver_open(struct inode *device_file, struct file *instance);
 static int driver_release(struct inode *device_file, struct file *instance);
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset);
+static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset);
 
 static struct file_operations fops = {
     .open = driver_open,
     .release = driver_release,
-    .read = driver_read
+    .read = driver_read,
+    .write = driver_write
 };
 
 static int __init mod_init(void) {
@@ -88,31 +86,18 @@ static void __exit mod_exit(void) {
 
 static int driver_open(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": open called\n");
-    while (!mutex_trylock(&mutex)) {
-        printk(KERN_DEBUG DEV_NAME ": driver busy, retrying after 200 ms...\n");
-        // Sleep for 200 ms
-        schedule_timeout_interruptible(200 * HZ / 1000);
-        if (signal_pending(current)) {
-            printk(KERN_ERR DEV_NAME ": signal received\n");
-            mutex_unlock(&mutex);
-            return -EIO;
-        }
-    }
-    printk(KERN_DEBUG DEV_NAME ": mutex locked\n");
-    schedule_timeout_interruptible(3 * HZ);
-    printk(KERN_DEBUG DEV_NAME ": unlocking mutex\n");
-    mutex_unlock(&mutex);
-    return 0;
 }
 
 static int driver_release(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": release called\n");
-    return 0;
 }
 
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
-    printk(KERN_INFO DEV_NAME ": read called\n");
-    return 0;
+    printk(KERN_DEBUG DEV_NAME ": read called\n");
+}
+
+static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
+    printk(KERN_DEBUG DEV_NAME ": write called\n");
 }
 
 module_init(mod_init);
