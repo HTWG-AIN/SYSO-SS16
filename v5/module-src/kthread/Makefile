@@ -1,5 +1,5 @@
 ifneq ($(KERNELRELEASE),)
-obj-m := template.o
+obj-m := kthread.o
 
 else
 PWD     := $(shell pwd)

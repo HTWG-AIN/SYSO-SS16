@@ -4,11 +4,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 
-#include <linux/sched.h>
-#include <asm/processor.h>
-#include <linux/wait.h>
-#include <linux/completion.h>
-//#include <linux/version.h>
+#include <linux/kthread.h>
 
 //#define CLASSIC_METHOD
 
@@ -33,9 +29,12 @@ static struct cdev *driver_object;
 static struct class *class;
 #endif
 
+static int thread_run(void *ignore);
+
 static struct file_operations fops = {};
-static int thread_id = 0;
-static DECLARE_COMPLETION( on_exit );
+static pid_t thread_id;
+static DECLARE_COMPLETION(on_exit);
+static wait_queue_head_t wq;
 
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
@@ -67,45 +66,23 @@ static int __init mod_init(void) {
     device_create(class, NULL, dev_number, NULL, "%s", DEV_NAME);
     printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
-    
-    
-    thread_id=kernel_thread(&thread_run, NULL, CLONE_KERNEL);
-    if(!thread_id){
-        printk(KERN_ERR DEV_NAME ": error in Thread creation\n");
+
+    init_waitqueue_head(&wq);
+    thread_id = kernel_thread(thread_run, NULL, CLONE_FS | CLONE_FILES | CLONE_SIGHAND);
+    if (!thread_id) {
+        printk(KERN_ERR DEV_NAME ": error in thread creation\n");
         return -EIO;
     }
-    
+
     return 0;
 }
 
-static void thread_run(void* ignore){
-    unsigned long timeout;
-        
-    daemonize("kthread:%d.", thread_id);
-    allow_signal(1); //TODO CHANGE SIGNAL FROM 1
-    
-    while(1){
-        timeout=2 * HZ; // wait 1 second
-        timeout=wait_event_interruptible_timeout(wq, (timeout==0), timeout);
-        if( !signal_pending(current) ) {
-        // TODO CHECK WHAT SIGNAL
-        printk(KERN_INFO DEV_NAME ": kernel Thread sleept received signal\n");
-        break;
-        } else {
-        printk(KERN_INFO DEV_NAME ": kernel Thread sleept woke up\n");    
-        }
-    }
-    
-    thread_id = 0;
-    complete_and_exit( &on_exit, 0 );
-}
-
 static void __exit mod_exit(void) {
-     if( thread_id ){
-         kill_proc(thread_id,1,1); // TODO: CHANGE SIGNAL FROM 1
-     }
-     wait_for_completion( &on_exit );
-    
+    if (thread_id) {
+        kill_proc(thread_id, SIGTERM, 1);
+    }
+    wait_for_completion(&on_exit);
+
     #ifdef CLASSIC_METHOD
     unregister_chrdev(major, DEV_NAME);
     #else
@@ -115,6 +92,28 @@ static void __exit mod_exit(void) {
     unregister_chrdev_region(dev_number, 1);
     #endif
     printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
+}
+
+static int thread_run(void *ignore) {
+    unsigned long timeout;
+
+    daemonize("kthread: %d", thread_id);
+    allow_signal(1);    // TODO: CHANGE SIGNAL FROM 1
+    
+    while(1){
+        timeout = 2 * HZ; // wait 1 second
+        timeout = wait_event_interruptible_timeout(wq, (timeout == 0), timeout);
+        if(!signal_pending(current)) {
+            // TODO: CHECK WHAT SIGNAL
+            printk(KERN_INFO DEV_NAME ": kernel thread slept received signal\n");
+            break;
+        } else {
+            printk(KERN_INFO DEV_NAME ": kernel thread sleept woke up\n");    
+        }
+    }
+    
+    thread_id = 0;
+    complete_and_exit(&on_exit, 0);
 }
 
 module_init(mod_init);
