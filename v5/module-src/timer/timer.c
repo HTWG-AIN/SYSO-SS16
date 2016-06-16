@@ -43,8 +43,8 @@ static unsigned long min, max, curr, prev = 0;
 static void timer_function(unsigned long arg) {
     if (prev) {
         curr = jiffies - prev;
-        max = max < curr ? curr : max;
-        min = min > curr ? curr : min;
+        max = max > curr ? max : curr;
+        min = min < curr && min ? min : curr;
         printk(KERN_INFO "Timer expired after %lu jiffies (min = %lu, max = %lu)\n", curr, min, max);
     }
     prev = jiffies;
