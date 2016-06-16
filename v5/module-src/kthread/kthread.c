@@ -5,6 +5,7 @@
 #include <linux/module.h>
 
 #include <linux/kthread.h>
+#include <linux/sched.h>
 
 //#define CLASSIC_METHOD
 
@@ -32,7 +33,7 @@ static struct class *class;
 static int thread_run(void *ignore);
 
 static struct file_operations fops = {};
-static pid_t thread_id;
+static struct task_struct *thread_id;
 static DECLARE_COMPLETION(on_exit);
 static wait_queue_head_t wq;
 
@@ -68,7 +69,8 @@ static int __init mod_init(void) {
     #endif
 
     init_waitqueue_head(&wq);
-    thread_id = kernel_thread(thread_run, NULL, CLONE_FS | CLONE_FILES | CLONE_SIGHAND);
+
+    thread_id = kthread_create(thread_run, NULL, "kthread_group2");
     if (!thread_id) {
         printk(KERN_ERR DEV_NAME ": error in thread creation\n");
         return -EIO;
@@ -79,7 +81,7 @@ static int __init mod_init(void) {
 
 static void __exit mod_exit(void) {
     if (thread_id) {
-        kill_proc(thread_id, SIGTERM, 1);
+        kill_pid(task_pid(thread_id), SIGTERM, 1);
     }
     wait_for_completion(&on_exit);
 
@@ -97,7 +99,6 @@ static void __exit mod_exit(void) {
 static int thread_run(void *ignore) {
     unsigned long timeout;
 
-    daemonize("kthread: %d", thread_id);
     allow_signal(1);    // TODO: CHANGE SIGNAL FROM 1
     
     while(1){
