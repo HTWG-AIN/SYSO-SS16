@@ -5,6 +5,10 @@
 #include <linux/module.h>
 
 #include <linux/uaccess.h>
+#include <linux/slab.h>
+#include <linux/string.h>
+#include <linux/mutex.h>
+#include <linux/sched.h>
 
 
 //#define CLASSIC_METHOD
@@ -36,8 +40,9 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset);
 static ssize_t read_from_buffer(char __user *user, size_t until);
 static ssize_t write_to_bufffer(const char __user *user, size_t count);
-static int lock_mutex();
+static int lock_mutex(void);
 
+#define buff_size_max 100
 
 static struct file_operations fops = {
     .open = driver_open,
@@ -46,14 +51,13 @@ static struct file_operations fops = {
     .write = driver_write
 };
 
-static int buff_size_max = 100;
-static buffer_struct *buffer;
-
-struct buffer_struct {
+struct my_bufffer{
     int size;
-    char buff[buff_size_max];
+    char buff[100];
     int offset;
 };
+
+static struct my_bufffer *buffer;
 
 static DEFINE_MUTEX(mutex);
 
@@ -89,12 +93,12 @@ static int __init mod_init(void) {
     printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
 
-  buffer = (struct buffer_struct*) kmalloc(sizeof(struct buffer_struct), GFP_KERNEL);
+  buffer = (struct my_bufffer*) kmalloc(sizeof(struct my_bufffer), GFP_KERNEL);
     if(!buffer){
         printk(KERN_ERR DEV_NAME ": unable to allocate memory.");
     }
 
-    buffer->size = 0:
+    buffer->size = 0;
     buffer->offset = 0;
 
 
@@ -111,21 +115,22 @@ static void __exit mod_exit(void) {
     unregister_chrdev_region(dev_number, 1);
     #endif
 
-    kfree(msg_data);
-
+    kfree(buffer);
 
     printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
 }
 
 static int driver_open(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": open called\n");
+    return -1;
 }
 
 static int driver_release(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": release called\n");
+    return -1;
 }
 
-static int lock_mutex(){
+static int lock_mutex(void){
     while (!mutex_trylock(&mutex)) {
         if (signal_pending(current)) {
             printk(KERN_ERR DEV_NAME ": signal received\n");
@@ -133,7 +138,7 @@ static int lock_mutex(){
             return 1;
         }
     }
-    return 0
+    return 0;
 }
 
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
@@ -172,7 +177,7 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
     }
     copied += read_from_buffer(user, to_copy % buff_size_max);
 
-    mutex_unlock(&mutex)
+    mutex_unlock(&mutex);
     return copied;
 }
 
@@ -215,14 +220,14 @@ static ssize_t read_from_buffer(char __user *user, size_t until){
     copied = to_copy - copy_to_user(user, buffer->buff + buffer->offset, to_copy);
     buffer-> size -= copied;
 
-    reutrn copied;
+    return copied;
 }
 
 static ssize_t write_to_bufffer(const char __user *user, size_t count){
     size_t not_copied, to_copy, rest, copied;
 
-    if(count + offset > buff_size_max){
-        to_copy = buff_size_max - offset;
+    if(count + buffer->offset > buff_size_max){
+        to_copy = buff_size_max - buffer->offset;
         rest = count - to_copy;
     } else {
         to_copy = count;
@@ -230,7 +235,7 @@ static ssize_t write_to_bufffer(const char __user *user, size_t count){
     }
 
 
-    not_copied = copy_from_user(buffer->buff + buffer->offfset, user, to_copy);
+    not_copied = copy_from_user(buffer->buff + buffer->offset, user, to_copy);
     copied = to_copy - not_copied;
     buffer->offset += copied;
     buffer->size += copied;
@@ -241,12 +246,12 @@ static ssize_t write_to_bufffer(const char __user *user, size_t count){
     if(rest){
         not_copied = copy_from_user(buffer->buff, user+copied, rest);
         copied = rest - not_copied;
-        buffer-> offset =  copied;
-        buffer-> size += copied;
+        buffer->offset =  copied;
+        buffer->size += copied;
         return count - not_copied;
     }
 
-    return count
+    return count;
 }
 
 module_init(mod_init);
