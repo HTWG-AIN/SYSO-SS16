@@ -1,6 +1,6 @@
 #!/bin/sh
 
-MOD_NAME="template"
+MOD_NAME="lock"
 
 echo
 echo "** Module info"

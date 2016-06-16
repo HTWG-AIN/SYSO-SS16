@@ -13,9 +13,9 @@ if BR2_PACKAGE_SYSO
 		source "$BR2_EXTERNAL/mynull/Config.in"
 		source "$BR2_EXTERNAL/tasklet/Config.in"
 		source "$BR2_EXTERNAL/timer/Config.in"
-		#source "$BR2_EXTERNAL/kthread/Config.in"
+		source "$BR2_EXTERNAL/kthread/Config.in"
 		source "$BR2_EXTERNAL/wq/Config.in"
-		#source "$BR2_EXTERNAL/lock/Config.in"
+		source "$BR2_EXTERNAL/lock/Config.in"
 		source "$BR2_EXTERNAL/open_once/Config.in"
 	endmenu
 endif
