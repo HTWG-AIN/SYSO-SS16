@@ -32,17 +32,17 @@ static struct file_operations fops = {};
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
     if ((major = register_chrdev(0, DEV_NAME, &fops)) < 0) {
-        printk(KERN_ALERT "Error registering device (%d)\n", major);
+        printk(KERN_ALERT DEV_NAME ": error registering device (%d)\n", major);
         return major;
     }
-    printk(KERN_INFO DEV_NAME " device succesfully registered with major number %d\n", major);
+    printk(KERN_INFO DEV_NAME ": device succesfully registered with major number %d\n", major);
     #else
     if (alloc_chrdev_region(&dev_number, 0, 1, REGION_NAME)) {
-        printk("Error in alloc_chrdev_region\n");
+        printk(KERN_ERR DEV_NAME ": error in alloc_chrdev_region\n");
         return -EIO;
     }
     if ((driver_object = cdev_alloc()) == NULL) {
-        printk("Error in cdev_alloc\n");
+        printk(KERN_ERR DEV_NAME ": error in cdev_alloc\n");
         kobject_put(&driver_object->kobj);
         unregister_chrdev_region(dev_number, 1);
         return -EIO;
@@ -50,14 +50,14 @@ static int __init mod_init(void) {
     driver_object->owner = THIS_MODULE;
     driver_object->ops = &fops;
     if (cdev_add(driver_object, dev_number, 1)) {
-        printk("Error in cdev_add\n");
+        printk(KERN_ERR DEV_NAME ": error in cdev_add\n");
         kobject_put(&driver_object->kobj);
         unregister_chrdev_region(dev_number, 1);
         return -EIO;
     }
     class = class_create(THIS_MODULE, CLASS_NAME);
     device_create(class, NULL, dev_number, NULL, "%s", DEV_NAME);
-    printk(KERN_INFO DEV_NAME " device init succesfully completed\n");
+    printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
     return 0;
 }
@@ -71,7 +71,7 @@ static void __exit mod_exit(void) {
     cdev_del(driver_object);
     unregister_chrdev_region(dev_number, 1);
     #endif
-    printk(KERN_INFO DEV_NAME " device succesfully unregistered\n");
+    printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
 }
 
 module_init(mod_init);

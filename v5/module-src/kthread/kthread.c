@@ -40,17 +40,17 @@ static DECLARE_COMPLETION( on_exit );
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
     if ((major = register_chrdev(0, DEV_NAME, &fops)) < 0) {
-        printk(KERN_ALERT "Error registering device (%d)\n", major);
+        printk(KERN_ALERT DEV_NAME ": error registering device (%d)\n", major);
         return major;
     }
-    printk(KERN_INFO DEV_NAME " device succesfully registered with major number %d\n", major);
+    printk(KERN_INFO DEV_NAME ": device succesfully registered with major number %d\n", major);
     #else
     if (alloc_chrdev_region(&dev_number, 0, 1, REGION_NAME)) {
-        printk("Error in alloc_chrdev_region\n");
+        printk(KERN_ERR DEV_NAME ": error in alloc_chrdev_region\n");
         return -EIO;
     }
     if ((driver_object = cdev_alloc()) == NULL) {
-        printk("Error in cdev_alloc\n");
+        printk(KERN_ERR DEV_NAME ": error in cdev_alloc\n");
         kobject_put(&driver_object->kobj);
         unregister_chrdev_region(dev_number, 1);
         return -EIO;
@@ -58,26 +58,25 @@ static int __init mod_init(void) {
     driver_object->owner = THIS_MODULE;
     driver_object->ops = &fops;
     if (cdev_add(driver_object, dev_number, 1)) {
-        printk("Error in cdev_add\n");
+        printk(KERN_ERR DEV_NAME ": error in cdev_add\n");
         kobject_put(&driver_object->kobj);
         unregister_chrdev_region(dev_number, 1);
         return -EIO;
     }
     class = class_create(THIS_MODULE, CLASS_NAME);
     device_create(class, NULL, dev_number, NULL, "%s", DEV_NAME);
-    printk(KERN_INFO DEV_NAME " device init succesfully completed\n");
+    printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
     
     
     thread_id=kernel_thread(&thread_run, NULL, CLONE_KERNEL);
     if(!thread_id){
-        printk("Error in Thread creation\n");
+        printk(KERN_ERR DEV_NAME ": error in Thread creation\n");
         return -EIO;
     }
     
     return 0;
 }
-
 
 static void thread_run(void* ignore){
     unsigned long timeout;
@@ -89,11 +88,11 @@ static void thread_run(void* ignore){
         timeout=2 * HZ; // wait 1 second
         timeout=wait_event_interruptible_timeout(wq, (timeout==0), timeout);
         if( !signal_pending(current) ) {
-            // TODO CHECK WHAT SIGNAL
-        printk(KERN_INFO DEV_NAME " Kernel Thread sleept received signal\n");
+        // TODO CHECK WHAT SIGNAL
+        printk(KERN_INFO DEV_NAME ": kernel Thread sleept received signal\n");
         break;
         } else {
-        printk(KERN_INFO DEV_NAME " Kernel Thread sleept woke up\n");    
+        printk(KERN_INFO DEV_NAME ": kernel Thread sleept woke up\n");    
         }
     }
     
@@ -103,7 +102,7 @@ static void thread_run(void* ignore){
 
 static void __exit mod_exit(void) {
      if( thread_id ){
-         kill_proc(thread_id,1,1); //TODO CHANGE SIGNAL FROM 1
+         kill_proc(thread_id,1,1); // TODO: CHANGE SIGNAL FROM 1
      }
      wait_for_completion( &on_exit );
     
@@ -115,7 +114,7 @@ static void __exit mod_exit(void) {
     cdev_del(driver_object);
     unregister_chrdev_region(dev_number, 1);
     #endif
-    printk(KERN_INFO DEV_NAME " device succesfully unregistered\n");
+    printk(KERN_INFO DEV_NAME ": device succesfully unregistered\n");
 }
 
 module_init(mod_init);
