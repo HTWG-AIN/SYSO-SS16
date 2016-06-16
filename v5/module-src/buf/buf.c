@@ -53,7 +53,7 @@ static struct file_operations fops = {
 
 struct my_bufffer{
     int size;
-    char buff[100];
+    char buff[buff_size_max];
     int offset;
 };
 
