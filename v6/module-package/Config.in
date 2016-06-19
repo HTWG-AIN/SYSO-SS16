@@ -1,0 +1,21 @@
+config BR2_PACKAGE_SYSO
+	bool "syso"
+	help
+	  All SYSO Packages
+
+if BR2_PACKAGE_SYSO
+	menu "SYSO Modules"
+		source "$BR2_EXTERNAL/access/Config.in"
+		source "$BR2_EXTERNAL/template/Config.in"
+		source "$BR2_EXTERNAL/openclose/Config.in"
+		source "$BR2_EXTERNAL/systeminfo/Config.in"
+		source "$BR2_EXTERNAL/myzero/Config.in"
+		source "$BR2_EXTERNAL/mynull/Config.in"
+		source "$BR2_EXTERNAL/tasklet/Config.in"
+		source "$BR2_EXTERNAL/timer/Config.in"
+		source "$BR2_EXTERNAL/kthread/Config.in"
+		source "$BR2_EXTERNAL/wq/Config.in"
+		source "$BR2_EXTERNAL/lock/Config.in"
+		source "$BR2_EXTERNAL/open_once/Config.in"
+	endmenu
+endif

@@ -1,0 +1,12 @@
+ACCESS_NAME = access
+ACCESS_VERSION = 1.0
+ACCESS_SITE_METHOD = file
+ACCESS_SOURCE = $(ACCESS_NAME)-$(ACCESS_VERSION).tar.gz
+ACCESS_SITE = ./dl
+ACCESS_INSTALL_TARGET = YES
+
+define ACCESS_INSTALL_TARGET_CMDS
+	$(MAKE) CC="$(TARGET_CC)" LD="$(TARGET_LD)" -C $(@D) all
+endef
+
+$(eval $(generic-package))
