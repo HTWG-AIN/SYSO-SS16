@@ -9,7 +9,7 @@
 #include <linux/string.h>
 #include <linux/mutex.h>
 #include <linux/sched.h>
-
+#include <linux/wait.h>
 
 //#define CLASSIC_METHOD
 
@@ -38,9 +38,13 @@ static int driver_open(struct inode *device_file, struct file *instance);
 static int driver_release(struct inode *device_file, struct file *instance);
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset);
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset);
+static ssize_t read_from_ringbuffer(char __user *user, size_t count);
 static ssize_t read_from_buffer(char __user *user, size_t until);
-static ssize_t write_to_bufffer(const char __user *user, size_t count);
+static ssize_t write_to_buffer(const char __user *user, size_t count);
 static int lock_mutex(void);
+
+DECLARE_WAIT_QUEUE_HEAD(read_q);
+DECLARE_WAIT_QUEUE_HEAD(write_q);
 
 #define buff_size_max 100
 
@@ -101,7 +105,6 @@ static int __init mod_init(void) {
     buffer->size = 0;
     buffer->offset = 0;
 
-
     return 0;
 }
 
@@ -131,85 +134,93 @@ static int driver_release(struct inode *device_file, struct file *instance) {
 }
 
 static int lock_mutex(void){
-    while (!mutex_trylock(&mutex)) {
-        if (signal_pending(current)) {
-            printk(KERN_ERR DEV_NAME ": signal received\n");
-            mutex_unlock(&mutex);
-            return 1;
-        }
+    mutex_lock(&mutex);
+    if (signal_pending(current)) {
+        printk(KERN_ERR DEV_NAME ": signal received\n");
+        mutex_unlock(&mutex);
+        return 1;
     }
+    
     return 0;
 }
 
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
-    size_t to_copy, to_copy1;
     ssize_t copied;
     
     printk(KERN_DEBUG DEV_NAME ": read called\n");
 
-    if(lock_mutex()) return -EIO;
-
-    while(buffer->size == 0){
-        mutex_unlock(&mutex);
-        while (buffer->size == 0){
-            //sleep 200ms
-            schedule_timeout_interruptible(200 * HZ / 1000);
-            //TODO sleep till available
-        }
-        if(lock_mutex()) return -EIO;
+    
+    if(count == 0)
+        return 0;
+    
+     while (buffer->size == 0){
+        wait_event(read_q,(buffer->size == 0));
     }
+    
+    if(lock_mutex()) return -EIO;
+    copied = read_from_ringbuffer(user,count);
+    mutex_unlock(&mutex);
+    
+    wake_up(&write_q);
+    return copied;
+    
+}
 
+static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
+    size_t written, to_copy;
+
+    printk(KERN_DEBUG DEV_NAME ": write called\n");
+
+    if(count > buff_size_max){
+        to_copy=buff_size_max;
+    }else{
+        to_copy=count;
+    }
+    
+    while (to_copy > buff_size_max - buffer->size){
+        wait_event(write_q,(to_copy > buff_size_max - buffer->size));
+    }
+    
+    
+    if(lock_mutex()) return -EIO;
+    written = write_to_buffer(user, to_copy);
+    mutex_unlock(&mutex);
+
+    wake_up(&read_q);
+    return written;
+
+}
+
+static ssize_t read_from_ringbuffer(char __user *user, size_t count){
+    
+    size_t copy_until, to_copy1;
+    ssize_t copied;
+    
+    
     if(count > buffer->size){
-        to_copy = buffer->offset + buffer->size;
+        copy_until = buffer->offset + buffer->size;
     } else {
-        to_copy = buffer-> offset + count;
+        copy_until = buffer-> offset + count;
     }
     copied = 0;
 
-    if(to_copy >= buff_size_max){
+    if(copy_until >= buff_size_max){
         to_copy1 = buff_size_max - buffer->offset; 
-        copied = read_from_buffer(user, to_copy1);
+        copied = read_from_buffer(user, buff_size_max-1);
 
         if(copied != to_copy1)
             return copied;
 
         buffer -> offset = 0;
     }
-    copied += read_from_buffer(user, to_copy % buff_size_max);
+    copied += read_from_buffer(user + to_copy1, copy_until % buff_size_max);
 
     mutex_unlock(&mutex);
     return copied;
-}
-
-static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
-    size_t available, written;
-
-    printk(KERN_DEBUG DEV_NAME ": write called\n");
-
-
-     while(buffer->size == buff_size_max){
-        mutex_unlock(&mutex);
-        while (buffer->size == buff_size_max){
-            //sleep 200ms
-            schedule_timeout_interruptible(200 * HZ / 1000);
-            //TODO sleep till available
-        }
-        if(lock_mutex()) return -EIO;
-    }
-
-    available = buff_size_max - buffer->size;
-
-
-    if(count > available){
-        written = write_to_bufffer(user, available);
-    } else{
-        written = write_to_bufffer(user, count);
-    }
-
-    mutex_unlock(&mutex);
-    return written;
+    
 
 }
+
 
 static ssize_t read_from_buffer(char __user *user, size_t until){
     size_t to_copy;
@@ -223,7 +234,7 @@ static ssize_t read_from_buffer(char __user *user, size_t until){
     return copied;
 }
 
-static ssize_t write_to_bufffer(const char __user *user, size_t count){
+static ssize_t write_to_buffer(const char __user *user, size_t count){
     size_t not_copied, to_copy, rest, copied;
 
     if(count + buffer->offset > buff_size_max){
