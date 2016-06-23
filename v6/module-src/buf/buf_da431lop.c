@@ -46,7 +46,7 @@ static int lock_mutex(void);
 DECLARE_WAIT_QUEUE_HEAD(read_q);
 DECLARE_WAIT_QUEUE_HEAD(write_q);
 
-#define buff_size_max 100
+#define BUF_SIZE 100
 
 static struct file_operations fops = {
     .open = driver_open,
@@ -55,16 +55,15 @@ static struct file_operations fops = {
     .write = driver_write
 };
 
-struct my_bufffer{
+struct my_bufffer {
+    char buff[BUF_SIZE];
     int size;
-    char buff[buff_size_max];
     int offset;
 };
 
 static struct my_bufffer *buffer;
 
 static DEFINE_MUTEX(mutex);
-
 
 static int __init mod_init(void) {
     #ifdef CLASSIC_METHOD
@@ -97,8 +96,8 @@ static int __init mod_init(void) {
     printk(KERN_INFO DEV_NAME ": device init succesfully completed\n");
     #endif
 
-  buffer = (struct my_bufffer*) kmalloc(sizeof(struct my_bufffer), GFP_KERNEL);
-    if(!buffer){
+    buffer = (struct my_bufffer*) kmalloc(sizeof(struct my_bufffer), GFP_KERNEL);
+    if (!buffer) {
         printk(KERN_ERR DEV_NAME ": unable to allocate memory.");
     }
 
@@ -133,139 +132,98 @@ static int driver_release(struct inode *device_file, struct file *instance) {
     return 0;
 }
 
-static int lock_mutex(void){
+static int lock_mutex(void) {
     mutex_lock(&mutex);
     if (signal_pending(current)) {
         printk(KERN_ERR DEV_NAME ": signal received\n");
         mutex_unlock(&mutex);
         return 1;
     }
+    
     return 0;
 }
 
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
     ssize_t copied;
     
-    printk(KERN_INFO DEV_NAME ": read called\n");
+    printk(KERN_DEBUG DEV_NAME ": read called (count = %d, buf_size = %d/%d)\n", count, buffer->size, BUF_SIZE);
 
-    
-    if(count == 0)
+    if (count == 0)
         return 0;
     
-    if(lock_mutex()) return -EIO;
-    while (buffer->size == 0){
+    lock_mutex();
+    while (buffer->size == 0) {
         mutex_unlock(&mutex);
-        wait_event(read_q,(buffer->size > 0));
-        if(lock_mutex()) return -EIO;
+        // Sleep until the buffer is not empty anymore
+        wait_event(read_q, (buffer->size > 0));
+        lock_mutex();
     }
-    
-    copied = read_from_ringbuffer(user,count);
+    copied = read_from_ringbuffer(user, count);
+    printk(KERN_DEBUG DEV_NAME ": %d bytes read\n", copied);
     mutex_unlock(&mutex);
-    
+    // Wake up the next producer in the queue
     wake_up(&write_q);
+
     return copied;
-    
 }
 
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
     size_t written, to_copy;
 
-    printk(KERN_INFO DEV_NAME ": write called\n");
+    printk(KERN_DEBUG DEV_NAME ": write called (count = %d, buf_size = %d/%d)\n", count, buffer->size, BUF_SIZE);
 
-    if(count > buff_size_max){
-        to_copy=buff_size_max;
-    }else{
-        to_copy=count;
-    }
-    
-    if(lock_mutex()) return -EIO;
-    while (to_copy > buff_size_max - buffer->size){
+    if (count == 0)
+        return 0;
+
+    lock_mutex();
+    while (count > BUF_SIZE - buffer->size) {
         mutex_unlock(&mutex);
-        wait_event(write_q,(to_copy <= buff_size_max - buffer->size));
-        if(lock_mutex()) return -EIO;
-
+        // Sleep while the amount of bytes to write doesn't fit in the buffer
+        wait_event(write_q, (count <= BUF_SIZE - buffer->size));
+        lock_mutex();
     }
-    
-    
-    written = write_to_buffer(user, to_copy);
+    written = write_to_buffer(user, count);
+    printk(KERN_DEBUG DEV_NAME ": %d bytes written\n", written);
     mutex_unlock(&mutex);
-
+    // Wake up the next consumer in the queue
     wake_up(&read_q);
+
     return written;
-
 }
 
-static ssize_t read_from_ringbuffer(char __user *user, size_t count){
-    
-    size_t copy_until, to_copy1;
-    ssize_t copied;
-    
-    if(count > buffer->size){
-        copy_until = buffer->offset + buffer->size;
-    } else {
-        copy_until = buffer-> offset + count;
-    }
-    copied = 0;
-
-    if(copy_until >= buff_size_max){
-        to_copy1 = buff_size_max - buffer->offset; 
-        copied = read_from_buffer(user, buff_size_max-1);
-
-        if(copied != to_copy1)
-            return copied;
-
-        buffer -> offset = 0;
-    }
-    copied += read_from_buffer(user + to_copy1, copy_until % buff_size_max);
-
-    return copied;
-    
-
-}
-
-
-static ssize_t read_from_buffer(char __user *user, size_t until){
+static ssize_t read_from_ringbuffer(char __user *user, size_t count) {
     size_t to_copy;
-    ssize_t copied;
+    ssize_t not_copied = 0;
 
-    to_copy = until - buffer->offset;
+    if (count < buffer->size) {
+        to_copy = count;
+    } else {
+        to_copy = buffer->size;
+    }
+    if (buffer->offset + to_copy >= BUF_SIZE) {
+        not_copied = copy_to_user(user, buffer->buff + buffer->offset, BUF_SIZE - buffer->offset);
+        buffer->offset = 0;
+        to_copy -= BUF_SIZE - buffer->offset;
+    }
+    not_copied += copy_to_user(user, buffer->buff + buffer->offset, to_copy);
+    buffer->offset += to_copy;
+    buffer->size -= to_copy - not_copied;
 
-    copied = to_copy - copy_to_user(user, buffer->buff + buffer->offset, to_copy);
-    buffer->offset += copied;
-    buffer->size -= copied;
-
-    return copied;
+    return to_copy - not_copied;
 }
 
-static ssize_t write_to_buffer(const char __user *user, size_t count){
-    size_t not_copied, to_copy, rest, copied;
-    int end_pointer = (buffer -> offset + buffer->size) % buff_size_max;
+static ssize_t write_to_buffer(const char __user *user, size_t count) {
+    size_t not_copied, to_copy;
 
-    if(count + end_pointer > buff_size_max){
-        to_copy = buff_size_max - end_pointer;
-        rest = count - to_copy;
+    if (count >= BUF_SIZE - buffer->size) {
+        not_copied = copy_from_user(buffer->buff + buffer->offset, user, BUF_SIZE - buffer->size);
+        not_copied += copy_from_user(buffer->buff, user, count - (BUF_SIZE - buffer->size));
     } else {
-        to_copy = count;
-        rest = 0;
+        not_copied = copy_from_user(buffer->buff + buffer->offset, user, count);
     }
+    buffer->size += count - not_copied;
 
-
-    not_copied = copy_from_user(buffer->buff + end_pointer, user, to_copy);
-    copied = to_copy - not_copied;
-    buffer->offset += copied;
-    buffer->size += copied;
-
-    if(not_copied)
-        return copied;
-
-    if(rest){
-        not_copied = copy_from_user(buffer->buff, user+copied, rest);
-        copied = rest - not_copied;
-        buffer->size += copied;
-        return count - not_copied;
-    }
-
-    return count;
+    return count - not_copied;
 }
 
 module_init(mod_init);
