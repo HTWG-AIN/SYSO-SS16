@@ -192,6 +192,7 @@ function start_qemu {
         -dtb "$DTB_PATH" \
         -m $MEMORY \
         -net nic,macaddr="$MACADDR" \
+        -net vde,sock=/tmp/vde2-tap0.ctl \
         -append "console=ttyAMA0 init=/sbin/init root=/dev/ram0" \
         -nographic
 }
