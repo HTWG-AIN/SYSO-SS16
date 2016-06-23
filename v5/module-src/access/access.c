@@ -202,35 +202,31 @@ void help() {
 void test_buf(program_params_t *program_params) {
     pthread_t read_thread, write_thread;
     struct timespec sleep_time;
-    sleep_time.tv_sec = 1;
-
-
+    sleep_time.tv_sec = 2;
+    sleep_time.tv_nsec = 0;
 
     pthread_create(&read_thread, NULL, test_buf_thread_read, program_params);
     clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+    
+    
 
     printf("step 2: writing\n");
-    buf_read(program_params, 1);
+    buf_write(program_params, 1);
     printf("    finished step 2\n");
     clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
 
 
-    printf("step 3: writing, filling up buffer\n");
-    buf_write(program_params, 150);
-    printf("    finished step 3\n");
-
     pthread_create(&write_thread, NULL, test_buf_thread_write, program_params);
+    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+
+    printf( "step 4: reading, creating space in buffer\n");
+    buf_read(program_params, 100); 
+    printf( "    finished step 4\n");
 
     clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
 
-    printf( "step 5: reading, creating space in buffer\n");
-    buf_read(program_params, 200); 
-    printf( "    finished step 5\n");
-
-    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
-
-    pthread_join(read_thread, NULL);
-    pthread_join(write_thread, NULL);
+    // pthread_join(read_thread, NULL);
+    // pthread_join(write_thread, NULL);
 }
 
 void *test_buf_thread_read(void *arg) {
@@ -247,9 +243,9 @@ void *test_buf_thread_write(void *arg) {
     program_params_t *prog_params;
     prog_params = (program_params_t *) arg;
 
-    printf("step 4: writing, awaiting buffer space\n");
-    buf_write(prog_params, 1);
-    printf("    finished step 4\n");
+    printf("step 3: writing, awaiting buffer space\n");
+    buf_write(prog_params, 40);
+    printf("    finished step 3\n");
 }
 void buf_read(program_params_t *prog_params, int n) {;
     int fd, res;
