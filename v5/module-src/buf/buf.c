@@ -125,12 +125,12 @@ static void __exit mod_exit(void) {
 
 static int driver_open(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": open called\n");
-    return -1;
+    return 0;
 }
 
 static int driver_release(struct inode *device_file, struct file *instance) {
     printk(KERN_DEBUG DEV_NAME ": release called\n");
-    return -1;
+    return 0;
 }
 
 static int lock_mutex(void){
