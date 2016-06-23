@@ -140,24 +140,25 @@ static int lock_mutex(void){
         mutex_unlock(&mutex);
         return 1;
     }
-    
     return 0;
 }
 
 static ssize_t driver_read(struct file *instance, char __user *user, size_t count, loff_t *offset) {
     ssize_t copied;
     
-    printk(KERN_DEBUG DEV_NAME ": read called\n");
+    printk(KERN_INFO DEV_NAME ": read called\n");
 
     
     if(count == 0)
         return 0;
     
-     while (buffer->size == 0){
-        wait_event(read_q,(buffer->size == 0));
+    if(lock_mutex()) return -EIO;
+    while (buffer->size == 0){
+        mutex_unlock(&mutex);
+        wait_event(read_q,(buffer->size > 0));
+        if(lock_mutex()) return -EIO;
     }
     
-    if(lock_mutex()) return -EIO;
     copied = read_from_ringbuffer(user,count);
     mutex_unlock(&mutex);
     
@@ -169,7 +170,7 @@ static ssize_t driver_read(struct file *instance, char __user *user, size_t coun
 static ssize_t driver_write(struct file *instance, const char __user *user, size_t count, loff_t *offset) {
     size_t written, to_copy;
 
-    printk(KERN_DEBUG DEV_NAME ": write called\n");
+    printk(KERN_INFO DEV_NAME ": write called\n");
 
     if(count > buff_size_max){
         to_copy=buff_size_max;
@@ -177,12 +178,15 @@ static ssize_t driver_write(struct file *instance, const char __user *user, size
         to_copy=count;
     }
     
+    if(lock_mutex()) return -EIO;
     while (to_copy > buff_size_max - buffer->size){
-        wait_event(write_q,(to_copy > buff_size_max - buffer->size));
+        mutex_unlock(&mutex);
+        wait_event(write_q,(to_copy <= buff_size_max - buffer->size));
+        if(lock_mutex()) return -EIO;
+
     }
     
     
-    if(lock_mutex()) return -EIO;
     written = write_to_buffer(user, to_copy);
     mutex_unlock(&mutex);
 
@@ -195,7 +199,6 @@ static ssize_t read_from_ringbuffer(char __user *user, size_t count){
     
     size_t copy_until, to_copy1;
     ssize_t copied;
-    
     
     if(count > buffer->size){
         copy_until = buffer->offset + buffer->size;
@@ -215,7 +218,6 @@ static ssize_t read_from_ringbuffer(char __user *user, size_t count){
     }
     copied += read_from_buffer(user + to_copy1, copy_until % buff_size_max);
 
-    mutex_unlock(&mutex);
     return copied;
     
 
@@ -229,16 +231,18 @@ static ssize_t read_from_buffer(char __user *user, size_t until){
     to_copy = until - buffer->offset;
 
     copied = to_copy - copy_to_user(user, buffer->buff + buffer->offset, to_copy);
-    buffer-> size -= copied;
+    buffer->offset += copied;
+    buffer->size -= copied;
 
     return copied;
 }
 
 static ssize_t write_to_buffer(const char __user *user, size_t count){
     size_t not_copied, to_copy, rest, copied;
+    int end_pointer = (buffer -> offset + buffer->size) % buff_size_max;
 
-    if(count + buffer->offset > buff_size_max){
-        to_copy = buff_size_max - buffer->offset;
+    if(count + end_pointer > buff_size_max){
+        to_copy = buff_size_max - end_pointer;
         rest = count - to_copy;
     } else {
         to_copy = count;
@@ -246,7 +250,7 @@ static ssize_t write_to_buffer(const char __user *user, size_t count){
     }
 
 
-    not_copied = copy_from_user(buffer->buff + buffer->offset, user, to_copy);
+    not_copied = copy_from_user(buffer->buff + end_pointer, user, to_copy);
     copied = to_copy - not_copied;
     buffer->offset += copied;
     buffer->size += copied;
@@ -257,7 +261,6 @@ static ssize_t write_to_buffer(const char __user *user, size_t count){
     if(rest){
         not_copied = copy_from_user(buffer->buff, user+copied, rest);
         copied = rest - not_copied;
-        buffer->offset =  copied;
         buffer->size += copied;
         return count - not_copied;
     }
