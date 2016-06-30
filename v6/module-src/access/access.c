@@ -5,9 +5,9 @@
 #include <time.h>
 #include <unistd.h>
 
-#define NUM_THREADS 4
-#define NUM_ROUNDS 50
-#define TEST_REPETITIONS 50
+#define NUM_THREADS_DEFAULT 4
+#define NUM_ROUNDS_DEFAULT 50
+#define TEST_REPETITIONS_DEFAULT 50
 #define BUFFER_SIZE 128
 
 typedef struct parameters {
@@ -18,6 +18,10 @@ typedef struct parameters {
     int sleep_time_ms;
 } program_params_t;
 
+static int NUM_THREADS = NUM_THREADS_DEFAULT;
+static int NUM_ROUNDS = NUM_ROUNDS_DEFAULT;
+static int TEST_REPETITIONS = TEST_REPETITIONS_DEFAULT;
+
 typedef struct thread_params {
     program_params_t *program_params;
     int thread_num;
@@ -25,6 +29,14 @@ typedef struct thread_params {
 
 void *access_tests(void *arg);
 void help();
+
+void test_buf(program_params_t *program_params);
+
+void buf_read(program_params_t *program_params, int n);
+void buf_write(program_params_t *program_params, int n);
+
+void *test_buf_thread_read(void *arg);
+void *test_buf_thread_write(void *arg);
 
 int main(int argc, char *argv[]) {
     program_params_t *program_params;
@@ -36,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     program_params = malloc(sizeof(program_params_t));
 
-    while ((opt = getopt(argc, argv, "d:orwt:h")) != -1) {
+    while ((opt = getopt(argc, argv, "d:orwt:sbh")) != -1) {
         switch (opt) {
             case 'd':
                 program_params->device_path = optarg;
@@ -53,6 +65,15 @@ int main(int argc, char *argv[]) {
             case 't':
                 program_params->sleep_time_ms = atoi(optarg);
                 break;
+            case 's':
+                NUM_THREADS = 1;
+                NUM_ROUNDS = 1;
+                TEST_REPETITIONS = 1;
+                break;
+            case 'b':
+                test_buf(program_params);
+                free(program_params);
+                return 0;
             case 'h':
                 help();
                 break;
@@ -171,5 +192,98 @@ void help() {
            "\t-r           perform read test\n"
            "\t-w           perform write test\n"
            "\t-t {TIME}    waiting time in ms between operations (open/close for -o, reads for -r or writes for -w)\n"
+           "\t-s           write and read only a single time with only a single thread\n"
+           "\t-b           run tets for buf.c\n"
            "\n");
 }
+
+
+
+void test_buf(program_params_t *program_params) {
+    pthread_t read_thread, write_thread;
+    struct timespec sleep_time;
+    sleep_time.tv_sec = 2;
+    sleep_time.tv_nsec = 0;
+
+    pthread_create(&read_thread, NULL, test_buf_thread_read, program_params);
+    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+    
+    
+
+    printf("step 2: writing\n");
+    buf_write(program_params, 1);
+    printf("    finished step 2\n");
+    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+
+
+    pthread_create(&write_thread, NULL, test_buf_thread_write, program_params);
+    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+
+    printf( "step 4: reading, creating space in buffer\n");
+    buf_read(program_params, 100); 
+    printf( "    finished step 4\n");
+
+    clock_nanosleep(CLOCK_REALTIME, 0, &sleep_time, NULL);
+
+    // pthread_join(read_thread, NULL);
+    // pthread_join(write_thread, NULL);
+}
+
+void *test_buf_thread_read(void *arg) {
+    program_params_t *prog_params;
+    prog_params = (program_params_t *) arg;
+
+    printf("step 1: reading\n");
+    buf_read(prog_params, 1);
+    printf("    finished step 1\n");
+
+
+}
+void *test_buf_thread_write(void *arg) {
+    program_params_t *prog_params;
+    prog_params = (program_params_t *) arg;
+
+    printf("step 3: writing, awaiting buffer space\n");
+    buf_write(prog_params, 40);
+    printf("    finished step 3\n");
+}
+void buf_read(program_params_t *prog_params, int n) {;
+    int fd, res;
+    char buf[BUFFER_SIZE];
+
+    if ((fd = open(prog_params->device_path, O_RDONLY)) < 0) {
+        fprintf(stderr, "-> thread: read_test, error opening file %s\n", prog_params->device_path);
+    } else {
+        while (n-- && (res = read(fd, buf, BUFFER_SIZE)) >= 0);
+        if (res < 0) {
+            fprintf(stderr, "-> thread: read_test, error reading data\n");
+        } else {
+            printf("-> thread: read_test, completed succesfully\n", prog_params->device_path);
+        }
+        if (close(fd) < 0) {
+            fprintf(stderr, "-> thread: read_test, error closing file %s\n", prog_params->device_path);
+        }
+    }
+}
+void buf_write(program_params_t *prog_params, int n) {
+    int fd, res, aux;
+    char buf[BUFFER_SIZE];
+
+    if ((fd = open(prog_params->device_path, O_WRONLY)) < 0) {
+        fprintf(stderr, "-> thread: write_thread, error opening file %s\n", prog_params->device_path);
+    } else {
+        aux = rand();
+        while (n-- && (res = write(fd, &aux, sizeof(int))) >= 0) {
+                    aux = rand();
+        }
+        if (res < 0) {
+            fprintf(stderr, "->thread: write_thread, error writing data\n");
+        } else {
+            printf("-> thread: write_thread, completed succesfully\n", prog_params->device_path);
+        }
+        if (close(fd) < 0) {
+            fprintf(stderr, "-> thread: write_thread, error closing file %s\n", prog_params->device_path);
+        }
+    }
+}
+
