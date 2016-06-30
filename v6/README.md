@@ -31,6 +31,8 @@ Will der Benutzer im Gegensatz eine Software von Grund auf installieren, muss er
 
 Je nach Paketverwaltungssystem werden entweder Source-Dateien und ein compile Skript übertragen, oder gleich eine bereits fertig compilte Software, bzw. ein Script welches die Betriebssystems-Architektur erkennt und mit diesem Wissen die richtige compilte Software herunterlädt. Dies hat den Vorteil, dass der Software Entwickler den Source-Code der Software nicht veröffentlichen muss.
 
+Ein Paketverwaltungssystem erhöht die Sicherheit des Systems da es überprüft, dass nur vertrauendwürdige Software installiert wird. Mehr dazu in bei Frage 4. 
+
 #### Frage 4
 ```
 Wie können Sie sicherstellen, dass das richtige Softwarepaket installiert wurde und nicht infizierte Schadsoftware eingeschleust wurde? (z.B. Übertragung etc.)
@@ -38,4 +40,6 @@ Wie können Sie sicherstellen, dass das richtige Softwarepaket installiert wurde
 
 Man sollte sicherstellen, dass das Packet nur über eine gesicherte Leitung geladen wird. Um zu überprüfen ob man ein unverändertes Packet heruntergeladen hat, sollte man den Hash das Pakets mit einem online Bereitgestellen Hash vergleichen.
 
-Das Packet könnte auch mittels Public-Key System verifiziert werden. Dies heißt, dass das Packet, eine Prüfsumme oder eine sonstige bekannte Komponente mit einem unbekannten Private-Key verschlüsselt wurden. Mit Hilfe eines online bereit gestellten Public-Keys kann nun die verschlüsselte Komponente entschlüsselt und überprüft werden.
+Das Packet könnte auch mittels Public-Key System verifiziert werden. Dies heißt, dass das Packet, eine Prüfsumme oder eine sonstige bekannte Komponente mit einem unbekannten Private-Key verschlüsselt wurden. Mit Hilfe eines online bereit gestellten Public-Keys kann nun die verschlüsselte Komponente entschlüsselt und überprüft werden.Das Paketverwaltungssystem übernimmt diesen Schritt für den Benutzer.
+
+Wenn der Benutzer das Paket über ein Paket Repository bezieht, so muss er nur sicherstellen, dass es sich um ein vertrauenswürdiges Repository handelt, den Rest übernimmt das Repository.
